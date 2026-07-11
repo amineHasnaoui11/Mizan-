@@ -25,6 +25,7 @@ API = config.API_URL
 DATA = Path(__file__).parent / "data"
 EXEMPLE = DATA / "exemple_reference.json"
 EXEMPLE_AZIZ = DATA / "aziz_p1.json"
+EXEMPLE_COMPLET = DATA / "eveil_6eme_complet.json"
 
 
 # --------------------------------------------------------------------------- #
@@ -158,9 +159,12 @@ with st.sidebar:
         if st.button("Exemple SVT (fr)", use_container_width=True):
             st.session_state["reference_txt"] = _charger_exemple()
     with col_ex2:
-        if st.button("Copie arabe (Aziz)", use_container_width=True,
-                     help="Barème réel — SVT 6ème, sang/nutrition, en arabe."):
+        if st.button("Situation 1 (ar)", use_container_width=True,
+                     help="Barème réel — Éveil scientifique 6ème, situation 1 (sang/nutrition), /7."):
             st.session_state["reference_txt"] = _charger_fichier(EXEMPLE_AZIZ)
+    if st.button("📄 Épreuve complète /20 (ar)", use_container_width=True,
+                 help="Barème complet des 3 situations — pour noter une copie entière (PDF multi-pages)."):
+        st.session_state["reference_txt"] = _charger_fichier(EXEMPLE_COMPLET)
     reference_txt = st.text_area(
         "JSON de référence",
         value=st.session_state.get("reference_txt", _charger_exemple()),
