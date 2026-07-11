@@ -60,7 +60,11 @@ def ocr_paddle(image_bytes: bytes) -> str:
     from paddleocr import PaddleOCR  # import paresseux
 
     if _paddle is None:
-        _paddle = PaddleOCR(use_angle_cls=True, lang="ar", show_log=False)
+        # show_log a été retiré dans PaddleOCR 3.x : on retombe sans lui.
+        try:
+            _paddle = PaddleOCR(use_angle_cls=True, lang="ar", show_log=False)
+        except TypeError:
+            _paddle = PaddleOCR(use_angle_cls=True, lang="ar")
 
     data = _maybe_preprocess(image_bytes, binariser=True)
     import cv2
