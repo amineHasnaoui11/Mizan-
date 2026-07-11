@@ -54,6 +54,27 @@ async function jsonOrThrow<T>(resp: Response): Promise<T> {
   return resp.json() as Promise<T>;
 }
 
+/** Construit le barème à partir des documents du prof (devoir + barème + corrigé). */
+export async function construireReference(docs: {
+  devoir: File[];
+  bareme: File[];
+  corrige: File[];
+  matiere?: string;
+  niveau?: string;
+  langue?: string;
+  devoirId?: string;
+}): Promise<Reference> {
+  const fd = new FormData();
+  docs.devoir.forEach((f) => fd.append("devoir", f));
+  docs.bareme.forEach((f) => fd.append("bareme", f));
+  docs.corrige.forEach((f) => fd.append("corrige", f));
+  fd.append("matiere", docs.matiere ?? "");
+  fd.append("niveau", docs.niveau ?? "");
+  fd.append("langue", docs.langue ?? "mixte");
+  fd.append("devoir_id", docs.devoirId ?? "");
+  return jsonOrThrow(await fetch(`${BASE}/construire-reference`, { method: "POST", body: fd }));
+}
+
 /** Transcrit une copie (1..N pages) — étape 1 du human-in-the-loop. */
 export async function transcrire(
   reference: Reference,
