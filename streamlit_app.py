@@ -1,13 +1,15 @@
-"""UI Mizan — correcteur de copies, human-in-the-loop.
+"""UI Mizan — correcteur de copies, pensé pour l'enseignant.
 
-Deux modes de correction :
-  * Rapide (1 appel)      — la photo part directement, l'IA transcrit + note.
-  * Human-in-the-loop     — 1) l'IA transcrit, 2) le prof relit/corrige la
-    (2 appels)               transcription, 3) l'IA note la version validée.
+Deux temps, comme le travail réel d'un prof :
 
-L'écran de résultat affiche côte à côte : la photo, la transcription (éditable)
-et les critères colorés. L'argument jury : on montre ce que l'IA a LU, et le prof
-garde le dernier mot.
+  1. 📋 Préparer le devoir — le prof fournit le **barème** et le **corrigé type**
+     (la réponse attendue par question). C'est la référence sur laquelle l'IA
+     s'appuie pour noter.
+  2. ✍️ Corriger une copie — dépose la copie de l'élève (photos ou PDF),
+     l'IA lit, le prof relit/valide, l'IA note. Le prof garde le dernier mot.
+
+Le JSON reste accessible dans un volet « Avancé », mais l'enseignant n'en a
+pas besoin au quotidien.
 """
 from __future__ import annotations
 
@@ -39,8 +41,19 @@ def _charger_fichier(chemin: Path) -> str:
     return "{}"
 
 
-def _charger_exemple() -> str:
-    return _charger_fichier(EXEMPLE)
+def _reference_courante() -> tuple[dict | None, str]:
+    """Parse la référence stockée en session ; (None, txt) si JSON invalide."""
+    txt = st.session_state.get("reference_txt", "")
+    if not txt.strip():
+        return {}, txt
+    try:
+        return json.loads(txt), txt
+    except json.JSONDecodeError:
+        return None, txt
+
+
+def _total_points(reference: dict) -> float:
+    return round(sum(q.get("note_max", 0) for q in reference.get("questions", [])), 3)
 
 
 def _couleur_ratio(obtenus: float, maxi: float) -> str:
@@ -86,8 +99,12 @@ def _afficher_correction(correction: dict, image_files) -> None:
     """Affiche la correction : photo(s) à gauche, détail par question à droite."""
     note = correction.get("note_globale", 0)
     note_max = correction.get("note_max", 0)
-    st.markdown(f"### Note proposée : **{note} / {note_max}**  ·  "
-                f"langue détectée : `{correction.get('langue_detectee', '?')}`")
+    couleur = _couleur_ratio(note, note_max)
+    st.markdown(
+        f"## Note proposée : {_badge(f'{note} / {note_max}', couleur)}",
+        unsafe_allow_html=True,
+    )
+    st.caption(f"langue détectée : {correction.get('langue_detectee', '?')} · à valider par l'enseignant")
     if correction.get("feedback_global"):
         st.info(correction["feedback_global"], icon="📝")
 
@@ -132,169 +149,263 @@ def _telecharger(correction: dict, copie_id: str) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Barre latérale : référence + copie
+# En-tête + barre latérale (infos seulement)
 # --------------------------------------------------------------------------- #
 
 st.title("⚖️ Mizan — correcteur de copies")
-st.caption(
-    f"Arabe + français manuscrits · l'IA propose, le prof valide "
-    f"· fournisseur : **{config.PROVIDER}**"
-)
-if config.PROVIDER == "esprit":
-    _lecteur = {
-        "google": "Google Cloud Vision (OCR)",
-        "easyocr": "EasyOCR",
-        "paddle": "PaddleOCR",
-        "llava": "LLaVA (vision)",
-    }.get(config.OCR, config.OCR)
-    st.caption(
-        f"ℹ️ Mode Esprit : **{_lecteur}** transcrit, Llama 3.1 70B note. "
-        "Relis toujours la transcription avant de noter (human-in-the-loop)."
-    )
+st.caption("Arabe + français manuscrits · l'IA propose, le prof valide.")
 
 with st.sidebar:
-    st.header("1. Référence (corrigé + barème)")
-    col_ex1, col_ex2 = st.columns(2)
-    with col_ex1:
-        if st.button("Exemple SVT (fr)", use_container_width=True):
-            st.session_state["reference_txt"] = _charger_exemple()
-    with col_ex2:
-        if st.button("Situation 1 (ar)", use_container_width=True,
-                     help="Barème réel — Éveil scientifique 6ème, situation 1 (sang/nutrition), /7."):
-            st.session_state["reference_txt"] = _charger_fichier(EXEMPLE_AZIZ)
-    if st.button("📄 Épreuve complète /20 (ar)", use_container_width=True,
-                 help="Barème complet des 3 situations — pour noter une copie entière (PDF multi-pages)."):
-        st.session_state["reference_txt"] = _charger_fichier(EXEMPLE_COMPLET)
-    reference_txt = st.text_area(
-        "JSON de référence",
-        value=st.session_state.get("reference_txt", _charger_exemple()),
-        height=280,
-        key="reference_txt",
+    st.markdown("### ⚖️ Mizan")
+    st.caption(f"Fournisseur : **{config.PROVIDER}**")
+    if config.PROVIDER == "esprit":
+        _lecteur = {
+            "google": "Google Cloud Vision (OCR)",
+            "easyocr": "EasyOCR",
+            "paddle": "PaddleOCR",
+            "llava": "LLaVA (vision)",
+        }.get(config.OCR, config.OCR)
+        st.caption(f"Lecture : **{_lecteur}** · Notation : Llama 3.1 70B")
+    st.divider()
+    st.caption(
+        "**Comment ça marche**\n\n"
+        "1. Prépare le devoir : barème + corrigé type.\n"
+        "2. Corrige une copie : dépose-la, relis ce que l'IA a lu, note.\n\n"
+        "Tu gardes toujours le dernier mot."
     )
 
-    st.header("2. Copie de l'élève")
-    copie_id = st.text_input("copie_id", value="eleve_001")
-    image_files = st.file_uploader(
-        "Copie de l'élève (images ou PDF, plusieurs pages possibles)",
-        type=["jpg", "jpeg", "png", "webp", "pdf"],
-        accept_multiple_files=True,
-        help="Ajoute toutes les pages d'une même copie (photos et/ou un PDF "
-        "multi-pages) : elles seront lues ensemble et notées en une seule fois.",
-    )
-    if image_files:
-        st.caption(f"📄 {len(image_files)} fichier(s) chargé(s)")
-
-    st.header("3. Options")
-    avec_corrige = st.checkbox(
-        "Utiliser le corrigé fourni", value=True,
-        help="Décoche pour l'Option 3 (raisonnement libre, sans corrigé).",
-    )
-
-try:
-    reference = json.loads(reference_txt) if reference_txt.strip() else {}
-except json.JSONDecodeError as e:
-    st.sidebar.error(f"Référence JSON invalide : {e}")
-    reference = None
+# Référence par défaut au premier chargement.
+if "reference_txt" not in st.session_state:
+    st.session_state["reference_txt"] = _charger_fichier(EXEMPLE_AZIZ)
 
 
 # --------------------------------------------------------------------------- #
-# Onglets : mode rapide vs human-in-the-loop
+# Onglets principaux
 # --------------------------------------------------------------------------- #
 
-onglet_rapide, onglet_hitl = st.tabs(
-    ["⚡ Correction rapide (1 appel)", "🧑‍🏫 Human-in-the-loop (2 appels)"]
-)
+tab_prep, tab_corr = st.tabs(["📋 Préparer le devoir", "✍️ Corriger une copie"])
 
-# ---- Mode rapide ---------------------------------------------------------- #
-with onglet_rapide:
-    st.write("La/les photo(s) partent directement : l'IA transcrit **et** note en une passe.")
-    pret = reference and image_files
-    if st.button("Corriger la copie", type="primary", disabled=not pret):
-        with st.spinner("Correction en cours…"):
-            resp = requests.post(
-                f"{API}/corriger",
-                data={
-                    "reference": json.dumps(reference, ensure_ascii=False),
-                    "copie_id": copie_id,
-                    "avec_corrige": str(avec_corrige).lower(),
-                },
-                files=[
-                    ("copie", (f.name, f.getvalue(), f.type)) for f in image_files
-                ],
-                timeout=300,
-            )
-        if resp.ok:
-            correction = resp.json()
-            st.success("Correction proposée — à valider par l'enseignant.")
-            _afficher_correction(correction, image_files)
-            _telecharger(correction, copie_id)
-        else:
-            st.error(f"Erreur {resp.status_code} : {resp.text}")
-    elif not pret:
-        st.info("Renseigne une référence valide et charge au moins une photo de copie.")
 
-# ---- Mode human-in-the-loop ---------------------------------------------- #
-with onglet_hitl:
+# =========================================================================== #
+# ONGLET 1 — Préparer le devoir (barème + corrigé type)
+# =========================================================================== #
+
+with tab_prep:
+    st.subheader("Barème & corrigé type")
     st.write(
-        "**Étape 1** — l'IA lit la copie. **Étape 2** — tu relis/corriges la "
-        "transcription. **Étape 3** — l'IA note la version que tu as validée."
+        "Charge un devoir existant ou saisis le tien : l'IA notera les copies "
+        "en s'appuyant sur **ce barème et ce corrigé**."
     )
-    pret = reference and image_files
 
-    if st.button("Étape 1 — Transcrire la copie", disabled=not pret):
-        with st.spinner("Lecture de la copie…"):
-            resp = requests.post(
-                f"{API}/transcrire",
-                data={
-                    "reference": json.dumps(reference, ensure_ascii=False),
-                    "copie_id": copie_id,
-                },
-                files=[
-                    ("copie", (f.name, f.getvalue(), f.type)) for f in image_files
-                ],
-                timeout=300,
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        if st.button("Exemple SVT (fr)", use_container_width=True):
+            st.session_state["reference_txt"] = _charger_fichier(EXEMPLE)
+            st.rerun()
+    with c2:
+        if st.button("Situation 1 · sang (ar)", use_container_width=True,
+                     help="Barème réel — Éveil scientifique 6ème, situation 1, /7."):
+            st.session_state["reference_txt"] = _charger_fichier(EXEMPLE_AZIZ)
+            st.rerun()
+    with c3:
+        if st.button("Épreuve complète /20 (ar)", use_container_width=True,
+                     help="Barème complet des 3 situations — copie entière (PDF multi-pages)."):
+            st.session_state["reference_txt"] = _charger_fichier(EXEMPLE_COMPLET)
+            st.rerun()
+
+    reference, _ = _reference_courante()
+
+    if reference is None:
+        st.error("Le barème (JSON) est invalide. Corrige-le dans le volet « Avancé » ci-dessous.")
+    elif not reference.get("questions"):
+        st.info("Aucune question. Charge un exemple ci-dessus ou saisis un barème dans « Avancé ».")
+    else:
+        questions = reference.get("questions", [])
+        total = _total_points(reference)
+        st.success(
+            f"**{reference.get('matiere', 'Devoir')}** · {reference.get('niveau', '')} · "
+            f"**{len(questions)} questions** · total **{total} pts**"
+        )
+        st.caption(
+            "Pour chaque question : l'énoncé, les points, et le **corrigé type** "
+            "(réponse attendue). Édite le corrigé si besoin, puis enregistre."
+        )
+
+        devoir_id = reference.get("devoir_id", "devoir")
+        with st.form("form_corrige"):
+            nouveaux = {}
+            for q in questions:
+                num = q.get("numero")
+                pts = q.get("note_max", 0)
+                typ = q.get("type", "ouverte")
+                with st.container(border=True):
+                    st.markdown(
+                        f"**Q{num}** · " + _badge(f"{pts} pts", "#37474f")
+                        + f" &nbsp; _{typ}_",
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown(f"**Énoncé :** {q.get('enonce', '')}")
+                    nouveaux[num] = st.text_area(
+                        f"Réponse attendue (corrigé) — Q{num}",
+                        value=q.get("corrige", ""),
+                        key=f"corr_{devoir_id}_{num}",
+                        height=90,
+                    )
+                    criteres = q.get("bareme", [])
+                    if criteres:
+                        st.caption(
+                            "Critères : "
+                            + " · ".join(
+                                f"{c.get('critere', '')} ({c.get('points_max', 0)})"
+                                for c in criteres
+                            )
+                        )
+            enregistrer = st.form_submit_button("💾 Enregistrer le corrigé", type="primary")
+
+        if enregistrer:
+            for q in reference["questions"]:
+                q["corrige"] = nouveaux.get(q.get("numero"), q.get("corrige", ""))
+            st.session_state["reference_txt"] = json.dumps(
+                reference, ensure_ascii=False, indent=2
             )
-        if resp.ok:
-            st.session_state["transcriptions"] = resp.json().get("transcriptions", [])
-            st.session_state["hitl_copie_id"] = copie_id
-        else:
-            st.error(f"Erreur {resp.status_code} : {resp.text}")
+            st.success("Corrigé type enregistré. Passe à l'onglet « Corriger une copie ».")
+            st.rerun()
 
-    transcriptions = st.session_state.get("transcriptions")
-    if transcriptions:
+    with st.expander("⚙️ Avancé — éditer le barème complet (JSON)"):
+        st.caption("Format libre. Chaque question : numero, enonce, type, corrige, note_max, bareme[].")
+        st.text_area("JSON de référence", key="reference_txt", height=320)
+
+
+# =========================================================================== #
+# ONGLET 2 — Corriger une copie
+# =========================================================================== #
+
+with tab_corr:
+    reference, _ = _reference_courante()
+
+    if not reference or not reference.get("questions"):
+        st.warning(
+            "Prépare d'abord un barème dans l'onglet **📋 Préparer le devoir**."
+        )
+    else:
+        st.subheader("Copie de l'élève")
+        st.caption(
+            f"Devoir : **{reference.get('matiere', '')}** · "
+            f"{len(reference.get('questions', []))} questions · "
+            f"{_total_points(reference)} pts"
+        )
+
+        col_id, col_up = st.columns([1, 2])
+        with col_id:
+            copie_id = st.text_input("Identifiant de la copie", value="eleve_001")
+        with col_up:
+            image_files = st.file_uploader(
+                "Photos ou PDF (plusieurs pages possibles)",
+                type=["jpg", "jpeg", "png", "webp", "pdf"],
+                accept_multiple_files=True,
+                help="Dépose toutes les pages d'une même copie : elles sont lues "
+                "ensemble et notées en une seule fois.",
+            )
+            if image_files:
+                st.caption(f"📄 {len(image_files)} fichier(s) chargé(s)")
+
+        with st.expander("Options"):
+            avec_corrige = st.checkbox(
+                "Utiliser le corrigé type (recommandé)", value=True,
+                help="Décoche pour laisser l'IA raisonner librement, sans corrigé.",
+            )
+
+        pret = bool(image_files)
         st.divider()
-        col_photo, col_edit = st.columns([1, 1.4], gap="large")
-        with col_photo:
-            st.caption("Copie de l'élève")
-            _apercu_fichiers(image_files)
-        with col_edit:
-            st.caption("Étape 2 — relis et corrige la transcription")
-            corrigees = []
-            for t in transcriptions:
-                num = t.get("numero")
-                txt = st.text_area(
-                    f"Question {num}",
-                    value=t.get("transcription", ""),
-                    key=f"trans_{num}",
-                    height=100,
-                )
-                corrigees.append({"numero": num, "transcription": txt})
 
-            if st.button("Étape 3 — Noter la version validée", type="primary"):
-                with st.spinner("Notation en cours…"):
+        sous_hitl, sous_rapide = st.tabs(
+            ["🧑‍🏫 Avec relecture (recommandé)", "⚡ Correction rapide"]
+        )
+
+        # ---- Avec relecture (human-in-the-loop) ----------------------------- #
+        with sous_hitl:
+            st.write(
+                "**1.** l'IA lit la copie · **2.** tu relis/corriges ce qu'elle a lu · "
+                "**3.** l'IA note la version validée."
+            )
+            if st.button("① Transcrire la copie", disabled=not pret):
+                with st.spinner("Lecture de la copie…"):
                     resp = requests.post(
-                        f"{API}/noter",
-                        json={
-                            "reference": reference,
-                            "copie_id": st.session_state.get("hitl_copie_id", copie_id),
-                            "transcriptions": corrigees,
+                        f"{API}/transcrire",
+                        data={
+                            "reference": json.dumps(reference, ensure_ascii=False),
+                            "copie_id": copie_id,
                         },
-                        timeout=180,
+                        files=[("copie", (f.name, f.getvalue(), f.type)) for f in image_files],
+                        timeout=300,
+                    )
+                if resp.ok:
+                    st.session_state["transcriptions"] = resp.json().get("transcriptions", [])
+                    st.session_state["hitl_copie_id"] = copie_id
+                else:
+                    st.error(f"Erreur {resp.status_code} : {resp.text}")
+
+            transcriptions = st.session_state.get("transcriptions")
+            if transcriptions:
+                st.divider()
+                col_photo, col_edit = st.columns([1, 1.4], gap="large")
+                with col_photo:
+                    st.caption("Copie de l'élève")
+                    _apercu_fichiers(image_files)
+                with col_edit:
+                    st.caption("② Relis et corrige ce que l'IA a lu")
+                    corrigees = []
+                    for t in transcriptions:
+                        num = t.get("numero")
+                        txt = st.text_area(
+                            f"Question {num}",
+                            value=t.get("transcription", ""),
+                            key=f"trans_{num}",
+                            height=100,
+                        )
+                        corrigees.append({"numero": num, "transcription": txt})
+
+                    if st.button("③ Noter la version validée", type="primary"):
+                        with st.spinner("Notation en cours…"):
+                            resp = requests.post(
+                                f"{API}/noter",
+                                json={
+                                    "reference": reference,
+                                    "copie_id": st.session_state.get("hitl_copie_id", copie_id),
+                                    "transcriptions": corrigees,
+                                },
+                                timeout=180,
+                            )
+                        if resp.ok:
+                            correction = resp.json()
+                            st.success("Note proposée à partir de la transcription validée.")
+                            _afficher_correction(correction, image_files)
+                            _telecharger(correction, correction.get("copie_id", copie_id))
+                        else:
+                            st.error(f"Erreur {resp.status_code} : {resp.text}")
+
+        # ---- Correction rapide (1 appel) ------------------------------------ #
+        with sous_rapide:
+            st.write("La copie part directement : l'IA transcrit **et** note en une passe.")
+            if st.button("Corriger la copie", type="primary", disabled=not pret):
+                with st.spinner("Correction en cours…"):
+                    resp = requests.post(
+                        f"{API}/corriger",
+                        data={
+                            "reference": json.dumps(reference, ensure_ascii=False),
+                            "copie_id": copie_id,
+                            "avec_corrige": str(avec_corrige).lower(),
+                        },
+                        files=[("copie", (f.name, f.getvalue(), f.type)) for f in image_files],
+                        timeout=300,
                     )
                 if resp.ok:
                     correction = resp.json()
-                    st.success("Note proposée à partir de la transcription validée.")
+                    st.success("Correction proposée — à valider par l'enseignant.")
                     _afficher_correction(correction, image_files)
-                    _telecharger(correction, correction.get("copie_id", copie_id))
+                    _telecharger(correction, copie_id)
                 else:
                     st.error(f"Erreur {resp.status_code} : {resp.text}")
+
+            if not pret:
+                st.info("Charge au moins une photo/page de copie ci-dessus.")
