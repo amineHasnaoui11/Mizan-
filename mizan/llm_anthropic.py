@@ -17,9 +17,10 @@ import json
 import anthropic
 
 from . import config, prompts
-from .schemas import Correction, build_output_json_schema
+from .schemas import Correction, Reference, build_output_json_schema, build_reference_json_schema
 
 _OUTPUT_SCHEMA = build_output_json_schema()
+_REFERENCE_SCHEMA = build_reference_json_schema()
 
 
 def _client() -> anthropic.Anthropic:
@@ -45,6 +46,71 @@ def _image_blocks(images: list[tuple[bytes, str]]) -> list[dict]:
 def _texte_reponse(response) -> str:
     """Concatène les blocs texte d'une réponse (ignore les blocs thinking)."""
     return "".join(b.text for b in response.content if b.type == "text")
+
+
+# --------------------------------------------------------------------------- #
+# Construction du barème à partir des documents du prof (Claude vision)
+# --------------------------------------------------------------------------- #
+
+
+def construire_reference(
+    devoir_images: list[tuple[bytes, str]],
+    bareme_images: list[tuple[bytes, str]],
+    corrige_images: list[tuple[bytes, str]],
+    matiere: str = "",
+    niveau: str = "",
+    langue: str = "mixte",
+    devoir_id: str = "",
+) -> dict:
+    """Construit le barème structuré à partir des documents scannés du prof.
+
+    Claude lit directement les images (devoir vierge, barème, corrigé) et
+    produit une référence conforme au schéma, via structured outputs.
+    """
+    contenu: list[dict] = []
+
+    def _ajouter(titre: str, images: list[tuple[bytes, str]]) -> None:
+        if not images:
+            return
+        contenu.append({"type": "text", "text": f"=== {titre} ==="})
+        contenu.extend(_image_blocks(images))
+
+    _ajouter("DEVOIR (énoncés)", devoir_images)
+    _ajouter("BARÈME (points)", bareme_images)
+    _ajouter("CORRIGÉ DU PROF (réponses attendues)", corrige_images)
+    if not contenu:
+        raise ValueError("Aucun document fourni.")
+
+    consigne = prompts.USER_CONSTRUCTION.format(
+        matiere=matiere,
+        niveau=niveau,
+        langue=langue,
+        devoir_id=devoir_id or "devoir",
+        texte_devoir="[voir images DEVOIR]",
+        texte_bareme="[voir images BARÈME]",
+        texte_corrige="[voir images CORRIGÉ]",
+        schema="(fourni par le format de sortie)",
+    )
+    contenu.append({"type": "text", "text": consigne})
+
+    response = _client().messages.create(
+        model=config.MODEL,
+        max_tokens=config.MAX_TOKENS,
+        system=prompts.SYSTEM_CONSTRUCTION,
+        output_config={
+            "effort": config.EFFORT,
+            "format": {"type": "json_schema", "schema": _REFERENCE_SCHEMA},
+        },
+        messages=[{"role": "user", "content": contenu}],
+    )
+    data = json.loads(_texte_reponse(response))
+    if matiere:
+        data.setdefault("matiere", matiere)
+    if niveau:
+        data.setdefault("niveau", niveau)
+    if devoir_id:
+        data["devoir_id"] = devoir_id
+    return Reference.model_validate(data).model_dump()
 
 
 # --------------------------------------------------------------------------- #

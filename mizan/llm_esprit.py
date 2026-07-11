@@ -21,9 +21,10 @@ import httpx
 from openai import OpenAI
 
 from . import config, prompts
-from .schemas import Correction, build_output_json_schema
+from .schemas import Correction, Reference, build_output_json_schema, build_reference_json_schema
 
 _OUTPUT_SCHEMA = build_output_json_schema()
+_REFERENCE_SCHEMA = build_reference_json_schema()
 
 
 def _client() -> OpenAI:
@@ -58,6 +59,82 @@ def _extract_json(text: str) -> dict:
     if i != -1 and j != -1 and j > i:
         return json.loads(text[i : j + 1])
     raise ValueError("Réponse du modèle sans JSON exploitable")
+
+
+# --------------------------------------------------------------------------- #
+# Construction du barème à partir des documents du prof
+# (barème + devoir vierge + corrigé) -> référence structurée
+# --------------------------------------------------------------------------- #
+
+
+def _ocr_groupe(images: list[tuple[bytes, str]]) -> str:
+    """OCR d'un ensemble de pages (un document), concaténées par page."""
+    from . import ocr
+
+    if not images:
+        return ""
+    morceaux = []
+    for idx, (img, _mt) in enumerate(images, 1):
+        texte = ocr.extraire_texte(img)
+        morceaux.append(f"--- page {idx} ---\n{texte}" if len(images) > 1 else texte)
+    return "\n\n".join(morceaux).strip()
+
+
+def construire_reference(
+    devoir_images: list[tuple[bytes, str]],
+    bareme_images: list[tuple[bytes, str]],
+    corrige_images: list[tuple[bytes, str]],
+    matiere: str = "",
+    niveau: str = "",
+    langue: str = "mixte",
+    devoir_id: str = "",
+) -> dict:
+    """Construit le barème structuré à partir des documents scannés du prof.
+
+    Lit (OCR) le devoir vierge, le barème et le corrigé, puis demande à Llama
+    de fusionner le tout en une référence conforme au schéma. Le prof relit et
+    corrige ensuite (human-in-the-loop).
+    """
+    if config.OCR not in ("google", "easyocr", "paddle"):
+        raise RuntimeError(
+            "La construction du barème nécessite un moteur OCR "
+            "(MIZAN_OCR=google|easyocr|paddle), pas LLaVA."
+        )
+    texte_devoir = _ocr_groupe(devoir_images)
+    texte_bareme = _ocr_groupe(bareme_images)
+    texte_corrige = _ocr_groupe(corrige_images)
+    if not (texte_devoir or texte_bareme or texte_corrige):
+        raise ValueError("Aucun texte lisible dans les documents fournis.")
+
+    user_text = prompts.USER_CONSTRUCTION.format(
+        matiere=matiere,
+        niveau=niveau,
+        langue=langue,
+        devoir_id=devoir_id or "devoir",
+        texte_devoir=texte_devoir or "(non fourni)",
+        texte_bareme=texte_bareme or "(non fourni)",
+        texte_corrige=texte_corrige or "(non fourni)",
+        schema=json.dumps(_REFERENCE_SCHEMA, ensure_ascii=False),
+    )
+    resp = _client().chat.completions.create(
+        model=config.ESPRIT_TEXT_MODEL,
+        max_tokens=config.MAX_TOKENS,
+        temperature=0.1,
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": prompts.SYSTEM_CONSTRUCTION},
+            {"role": "user", "content": user_text},
+        ],
+    )
+    data = _extract_json(resp.choices[0].message.content or "")
+    if matiere:
+        data.setdefault("matiere", matiere)
+    if niveau:
+        data.setdefault("niveau", niveau)
+    if devoir_id:
+        data["devoir_id"] = devoir_id
+    # Valide/normalise (lève si non conforme) puis renvoie un dict propre.
+    return Reference.model_validate(data).model_dump()
 
 
 # --------------------------------------------------------------------------- #

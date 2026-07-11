@@ -93,6 +93,56 @@ Renvoie le JSON : {{"copie_id": ..., "langue_detectee": "fr|ar|mixte",
 """
 
 # --------------------------------------------------------------------------- #
+# Construction du barème — à partir des documents du prof
+# (barème + devoir vierge + corrigé), on bâtit la référence structurée.
+# --------------------------------------------------------------------------- #
+
+SYSTEM_CONSTRUCTION = """\
+Tu es un assistant qui construit le BARÈME STRUCTURÉ d'un devoir à partir des
+documents fournis par l'enseignant. On te donne, sous forme de texte extrait
+par OCR, tout ou partie de :
+  1. le DEVOIR (les énoncés des questions) ;
+  2. le BARÈME (les points attribués à chaque question / critère) ;
+  3. le CORRIGÉ de l'enseignant (les réponses attendues).
+
+Ta tâche : produire un objet JSON unique décrivant le devoir, question par
+question, en fusionnant ces sources.
+
+Règles :
+- Une entrée par question, dans l'ordre du devoir. numero = entier séquentiel.
+- enonce : l'énoncé exact de la question (recopie fidèle, corrige juste l'OCR).
+- note_max : les points de la question (depuis le barème). Si absent, estime
+  raisonnablement et reste cohérent avec le total.
+- corrige : la réponse attendue (depuis le corrigé du prof). Si absent, déduis
+  une réponse correcte concise à partir de l'énoncé.
+- bareme : découpe note_max en critères explicites (critere, points_max, regle).
+  Si le barème ne détaille pas les critères, crée-en un seul couvrant note_max.
+- type : "factuelle" | "qcm" | "calcul" | "ouverte" selon la question.
+- note_max_devoir = somme des note_max.
+- N'invente pas de questions absentes des documents.
+
+Réponds UNIQUEMENT avec un objet JSON valide et conforme au schéma demandé,
+sans aucun texte avant ni après.
+"""
+
+USER_CONSTRUCTION = """\
+Métadonnées (peuvent être vides) : matiere="{matiere}", niveau="{niveau}",
+langue="{langue}", devoir_id="{devoir_id}".
+
+=== DEVOIR (énoncés) ===
+{texte_devoir}
+
+=== BARÈME (points) ===
+{texte_bareme}
+
+=== CORRIGÉ DU PROF (réponses attendues) ===
+{texte_corrige}
+
+Construis le barème structuré et réponds en JSON conforme au schéma :
+{schema}
+"""
+
+# --------------------------------------------------------------------------- #
 # Structuration (étape 3 du plan) — répartir un texte OCR brut par question
 # --------------------------------------------------------------------------- #
 

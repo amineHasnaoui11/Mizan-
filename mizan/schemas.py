@@ -86,6 +86,43 @@ class Correction(BaseModel):
 # --------------------------------------------------------------------------- #
 
 
+def build_reference_json_schema() -> dict:
+    """JSON Schema de la référence (barème) — pour guider la construction LLM."""
+    critere = {
+        "type": "object",
+        "properties": {
+            "critere": {"type": "string"},
+            "points_max": {"type": "number"},
+            "regle": {"type": "string"},
+        },
+        "required": ["critere", "points_max", "regle"],
+    }
+    question = {
+        "type": "object",
+        "properties": {
+            "numero": {"type": "integer"},
+            "enonce": {"type": "string"},
+            "type": {"type": "string", "enum": ["factuelle", "qcm", "calcul", "ouverte"]},
+            "corrige": {"type": "string"},
+            "note_max": {"type": "number"},
+            "bareme": {"type": "array", "items": critere},
+        },
+        "required": ["numero", "enonce", "type", "corrige", "note_max", "bareme"],
+    }
+    return {
+        "type": "object",
+        "properties": {
+            "devoir_id": {"type": "string"},
+            "matiere": {"type": "string"},
+            "niveau": {"type": "string"},
+            "langue": {"type": "string", "enum": ["fr", "ar", "mixte"]},
+            "note_max_devoir": {"type": "number"},
+            "questions": {"type": "array", "items": question},
+        },
+        "required": ["devoir_id", "note_max_devoir", "questions"],
+    }
+
+
 def build_output_json_schema() -> dict:
     """JSON Schema conforme aux structured outputs Claude.
 

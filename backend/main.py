@@ -118,7 +118,7 @@ def racine() -> dict:
         "version": __version__,
         "modele": config.MODEL,
         "effort": config.EFFORT,
-        "endpoints": ["/corriger", "/transcrire", "/noter"],
+        "endpoints": ["/construire-reference", "/corriger", "/transcrire", "/noter"],
     }
 
 
@@ -157,6 +157,35 @@ async def transcrire(
     images = await _read_images(copie)
     return _handle_anthropic_errors(
         lambda: correcteur.transcrire_copie(ref, images, copie_id)
+    )
+
+
+@app.post("/construire-reference")
+async def construire_reference(
+    devoir: list[UploadFile] = File(default=[]),
+    bareme: list[UploadFile] = File(default=[]),
+    corrige: list[UploadFile] = File(default=[]),
+    matiere: str = Form(""),
+    niveau: str = Form(""),
+    langue: str = Form("mixte"),
+    devoir_id: str = Form(""),
+) -> dict:
+    """Construit le barème structuré à partir des documents du prof.
+
+    `devoir` (énoncés vierges), `bareme` (points), `corrige` (réponses attendues)
+    acceptent chacun plusieurs fichiers (images ou PDF). Retourne une référence
+    éditable par le prof avant de noter les copies.
+    """
+    devoir_imgs = await _read_images(devoir) if devoir else []
+    bareme_imgs = await _read_images(bareme) if bareme else []
+    corrige_imgs = await _read_images(corrige) if corrige else []
+    if not (devoir_imgs or bareme_imgs or corrige_imgs):
+        raise HTTPException(400, "Fournis au moins un document (devoir, barème ou corrigé).")
+    return _handle_anthropic_errors(
+        lambda: correcteur.construire_reference(
+            devoir_imgs, bareme_imgs, corrige_imgs,
+            matiere=matiere, niveau=niveau, langue=langue, devoir_id=devoir_id,
+        )
     )
 
 
