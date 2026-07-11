@@ -56,9 +56,25 @@ Mizan supporte deux back-ends, choisis via `MIZAN_PROVIDER` :
 | Provider | Lecture copie | Notation | Remarque |
 |---|---|---|---|
 | `anthropic` (défaut) | Claude vision-first | Claude | Le plus fort, y compris arabe manuscrit. Clé payante. |
-| `esprit` | LLaVA 1.5 (vision) | Llama 3.1 70B | Gratuit via la Token Factory Esprit, **réseau/VPN Esprit requis**. LLaVA est faible sur l'arabe manuscrit. |
+| `esprit` | OCR (**Google Vision** / PaddleOCR) ou LLaVA | Llama 3.1 70B | Notation gratuite via la Token Factory Esprit (**réseau/VPN Esprit requis**). |
 
 Le split human-in-the-loop est identique pour les deux : transcrire → le prof corrige → noter.
+
+### Pipeline OCR (mode `esprit`), aligné sur le plan technique
+
+`Photo → 1. Preprocessing (OpenCV) → 2. OCR → 3. Structuration → 4. Notation (Llama) → 5. Restitution`
+
+La lecture de la copie est pilotée par `MIZAN_OCR` :
+
+| `MIZAN_OCR` | Moteur | Manuscrit arabe | Setup |
+|---|---|---|---|
+| `google` | Google Cloud Vision | ✅ Très bon (recommandé) | Compte Google Cloud + clé JSON (`GOOGLE_APPLICATION_CREDENTIALS`), 1000 img/mois gratuites |
+| `paddle` | PaddleOCR (open-source, offline) | 🟠 Correct | `pip install paddleocr paddlepaddle` |
+| `llava` | LLaVA via la Token Factory | ❌ Faible | Aucun (défaut historique) |
+
+`MIZAN_PREPROCESS=true` active le nettoyage OpenCV (deskew, binarisation, débruitage, CLAHE) — inutile avec Google Vision, utile avec PaddleOCR.
+
+**Setup Google Cloud Vision :** console.cloud.google.com → activer l'API *Cloud Vision* → créer un *compte de service* → télécharger la clé **JSON** → `GOOGLE_APPLICATION_CREDENTIALS=chemin/vers/cle.json`.
 
 ## Configuration (.env)
 

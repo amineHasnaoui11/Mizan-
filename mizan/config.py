@@ -50,6 +50,16 @@ ESPRIT_TEXT_MODEL = os.getenv(
 # vérification (comme dans l'exemple fourni par Esprit). "false" pour désactiver.
 ESPRIT_VERIFY_TLS = os.getenv("MIZAN_ESPRIT_VERIFY_TLS", "false").lower() in ("1", "true", "yes")
 
+# Moteur de lecture de la copie côté Esprit :
+#   "llava"  — VLM vision (défaut historique, faible sur arabe manuscrit)
+#   "google" — Google Cloud Vision OCR (recommandé pour le manuscrit)
+#   "paddle" — PaddleOCR open-source/offline
+OCR = os.getenv("MIZAN_OCR", "llava").lower()
+
+# Preprocessing OpenCV (étape 1) avant l'OCR. Inutile avec Google Vision,
+# recommandé avec PaddleOCR. Défaut : désactivé.
+PREPROCESS = os.getenv("MIZAN_PREPROCESS", "false").lower() in ("1", "true", "yes")
+
 
 def require_api_key() -> str:
     """Retourne la clé API du fournisseur actif, ou lève une erreur explicite."""

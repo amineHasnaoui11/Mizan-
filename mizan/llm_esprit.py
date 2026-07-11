@@ -61,7 +61,7 @@ def _extract_json(text: str) -> dict:
 
 
 # --------------------------------------------------------------------------- #
-# Étape 1 — transcription (LLaVA, vision)
+# Étape 1-3 — transcription : OCR (Google/Paddle) OU LLaVA (vision)
 # --------------------------------------------------------------------------- #
 
 
@@ -71,13 +71,28 @@ def transcrire_copie(
     media_type: str,
     copie_id: str,
 ) -> dict:
-    """Lit la copie avec LLaVA. Renvoie {copie_id, langue_detectee, transcriptions}.
+    """Lit la copie et renvoie {copie_id, langue_detectee, transcriptions}.
 
-    LLaVA suit mal les consignes JSON ; on parse au mieux et, en cas d'échec,
-    on met tout le texte lu sous la 1re question (le prof répartira ensuite).
+    Aiguillage selon MIZAN_OCR :
+      * "google"/"paddle" — OCR : texte complet mis sous la 1re question, la
+        structuration fine est laissée au LLM de notation (plus robuste).
+      * "llava" — VLM vision (fallback historique).
     """
+    from . import ocr
+
     questions = reference.get("questions", [])
     numeros = [q.get("numero") for q in questions]
+
+    if config.OCR in ("google", "paddle"):
+        texte = ocr.extraire_texte(image_bytes)
+        premier = numeros[0] if numeros else 1
+        return {
+            "copie_id": copie_id,
+            "langue_detectee": "mixte",
+            "transcriptions": [{"numero": premier, "transcription": texte}],
+        }
+
+    # --- Mode LLaVA (vision) ---
     liste = "\n".join(
         f"- Q{q.get('numero')}: {q.get('enonce', '')}" for q in questions
     )

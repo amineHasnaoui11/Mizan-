@@ -114,9 +114,14 @@ st.caption(
     f"· fournisseur : **{config.PROVIDER}**"
 )
 if config.PROVIDER == "esprit":
+    _lecteur = {
+        "google": "Google Cloud Vision (OCR)",
+        "paddle": "PaddleOCR",
+        "llava": "LLaVA (vision)",
+    }.get(config.OCR, config.OCR)
     st.caption(
-        "ℹ️ Mode Esprit : LLaVA transcrit, Llama 3.1 70B note. "
-        "LLaVA est faible sur l'arabe manuscrit — relis bien la transcription."
+        f"ℹ️ Mode Esprit : **{_lecteur}** transcrit, Llama 3.1 70B note. "
+        "Relis toujours la transcription avant de noter (human-in-the-loop)."
     )
 
 with st.sidebar:
