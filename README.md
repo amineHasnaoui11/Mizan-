@@ -49,15 +49,34 @@ streamlit run streamlit_app.py
 Dans l'UI : charge l'exemple de référence, dépose une photo de copie, puis choisis
 **Correction rapide** (1 appel) ou **Human-in-the-loop** (2 appels).
 
+## Fournisseurs de modèles
+
+Mizan supporte deux back-ends, choisis via `MIZAN_PROVIDER` :
+
+| Provider | Lecture copie | Notation | Remarque |
+|---|---|---|---|
+| `anthropic` (défaut) | Claude vision-first | Claude | Le plus fort, y compris arabe manuscrit. Clé payante. |
+| `esprit` | LLaVA 1.5 (vision) | Llama 3.1 70B | Gratuit via la Token Factory Esprit, **réseau/VPN Esprit requis**. LLaVA est faible sur l'arabe manuscrit. |
+
+Le split human-in-the-loop est identique pour les deux : transcrire → le prof corrige → noter.
+
 ## Configuration (.env)
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | — | Clé API Anthropic (obligatoire) |
-| `MIZAN_MODEL` | `claude-opus-4-8` | Modèle vision |
-| `MIZAN_EFFORT` | `high` | Effort de raisonnement (`low`→`max`) |
+| `MIZAN_PROVIDER` | `anthropic` | `anthropic` ou `esprit` |
 | `MIZAN_API_URL` | `http://localhost:8000` | URL du backend vue par l'UI |
 | `MIZAN_MAX_TOKENS` | `8000` | Plafond de sortie |
+| **Anthropic** | | |
+| `ANTHROPIC_API_KEY` | — | Clé API Anthropic |
+| `MIZAN_MODEL` | `claude-opus-4-8` | Modèle vision |
+| `MIZAN_EFFORT` | `high` | Effort de raisonnement (`low`→`max`) |
+| **Esprit** | | |
+| `ESPRIT_API_KEY` | — | Clé Token Factory |
+| `MIZAN_ESPRIT_BASE_URL` | `https://tokenfactory.esprit.tn/api` | Endpoint OpenAI-compatible |
+| `MIZAN_ESPRIT_VISION_MODEL` | `hosted_vllm/llava-1.5-7b-hf` | Modèle vision |
+| `MIZAN_ESPRIT_TEXT_MODEL` | `hosted_vllm/Llama-3.1-70B-Instruct` | Modèle notation |
+| `MIZAN_ESPRIT_VERIFY_TLS` | `false` | Vérification du certificat TLS interne |
 
 ## API
 

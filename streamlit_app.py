@@ -109,7 +109,15 @@ def _telecharger(correction: dict, copie_id: str) -> None:
 # --------------------------------------------------------------------------- #
 
 st.title("⚖️ Mizan — correcteur de copies")
-st.caption("Arabe + français manuscrits · l'IA propose, le prof valide")
+st.caption(
+    f"Arabe + français manuscrits · l'IA propose, le prof valide "
+    f"· fournisseur : **{config.PROVIDER}**"
+)
+if config.PROVIDER == "esprit":
+    st.caption(
+        "ℹ️ Mode Esprit : LLaVA transcrit, Llama 3.1 70B note. "
+        "LLaVA est faible sur l'arabe manuscrit — relis bien la transcription."
+    )
 
 with st.sidebar:
     st.header("1. Référence (corrigé + barème)")
