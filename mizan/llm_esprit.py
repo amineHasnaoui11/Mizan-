@@ -61,6 +61,62 @@ def _extract_json(text: str) -> dict:
 
 
 # --------------------------------------------------------------------------- #
+# Étape 3 — structuration : répartir un texte OCR brut par question (Llama texte)
+# --------------------------------------------------------------------------- #
+
+
+def structurer_texte(reference: dict, texte_ocr: str) -> dict:
+    """Découpe un bloc OCR brut en transcriptions par question (via Llama).
+
+    Renvoie {"langue_detectee": ..., "transcriptions": [{numero, transcription}]}.
+    En cas d'échec du modèle, on retombe sur tout le texte sous la 1re question.
+    """
+    questions = reference.get("questions", [])
+    numeros = [q.get("numero") for q in questions]
+    questions_min = [
+        {"numero": q.get("numero"), "enonce": q.get("enonce", "")} for q in questions
+    ]
+    user_text = prompts.USER_STRUCTURATION.format(
+        questions_json=json.dumps(questions_min, ensure_ascii=False, indent=2),
+        texte_ocr=texte_ocr,
+    )
+    try:
+        resp = _client().chat.completions.create(
+            model=config.ESPRIT_TEXT_MODEL,
+            max_tokens=config.MAX_TOKENS,
+            temperature=0.0,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": prompts.SYSTEM_STRUCTURATION},
+                {"role": "user", "content": user_text},
+            ],
+        )
+        data = _extract_json(resp.choices[0].message.content or "")
+        transcriptions = data.get("transcriptions") or []
+        # Ne garde que les numéros connus ; complète les questions manquantes.
+        par_numero = {
+            t.get("numero"): (t.get("transcription") or "")
+            for t in transcriptions
+            if t.get("numero") in numeros
+        }
+        transcriptions = [
+            {"numero": n, "transcription": par_numero.get(n, "")} for n in numeros
+        ]
+        if not any(t["transcription"].strip() for t in transcriptions):
+            raise ValueError("structuration vide")
+        return {
+            "langue_detectee": data.get("langue_detectee", "mixte"),
+            "transcriptions": transcriptions,
+        }
+    except Exception:
+        premier = numeros[0] if numeros else 1
+        return {
+            "langue_detectee": "mixte",
+            "transcriptions": [{"numero": premier, "transcription": texte_ocr}],
+        }
+
+
+# --------------------------------------------------------------------------- #
 # Étape 1-3 — transcription : OCR (Google/Paddle) OU LLaVA (vision)
 # --------------------------------------------------------------------------- #
 
@@ -74,8 +130,8 @@ def transcrire_copie(
     """Lit la copie et renvoie {copie_id, langue_detectee, transcriptions}.
 
     Aiguillage selon MIZAN_OCR :
-      * "google"/"easyocr"/"paddle" — OCR : texte complet mis sous la 1re
-        question, la structuration fine est laissée au LLM de notation.
+      * "google"/"easyocr"/"paddle" — OCR : le texte brut est ensuite
+        structuré par question (Llama, étape 3 du plan) avant relecture prof.
       * "llava" — VLM vision (fallback historique).
     """
     from . import ocr
@@ -85,11 +141,11 @@ def transcrire_copie(
 
     if config.OCR in ("google", "easyocr", "paddle"):
         texte = ocr.extraire_texte(image_bytes)
-        premier = numeros[0] if numeros else 1
+        structure = structurer_texte(reference, texte)
         return {
             "copie_id": copie_id,
-            "langue_detectee": "mixte",
-            "transcriptions": [{"numero": premier, "transcription": texte}],
+            "langue_detectee": structure["langue_detectee"],
+            "transcriptions": structure["transcriptions"],
         }
 
     # --- Mode LLaVA (vision) ---

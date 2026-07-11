@@ -93,6 +93,43 @@ Renvoie le JSON : {{"copie_id": ..., "langue_detectee": "fr|ar|mixte",
 """
 
 # --------------------------------------------------------------------------- #
+# Structuration (étape 3 du plan) — répartir un texte OCR brut par question
+# --------------------------------------------------------------------------- #
+
+SYSTEM_STRUCTURATION = """\
+Tu es un assistant qui organise la copie d'un élève. On te donne le TEXTE BRUT
+issu d'un OCR (une seule masse de texte, souvent dans l'ordre de la copie, avec
+du bruit : nom de l'élève, numéros, en-têtes, mots mal reconnus) et la LISTE des
+questions attendues. Ta seule tâche : répartir le texte de l'élève sous la bonne
+question.
+
+Règles STRICTES :
+- Ne CORRIGE pas, ne reformule pas, n'invente rien : recopie les fragments de
+  l'élève tels quels (fautes comprises).
+- Ignore le bruit qui n'est pas une réponse (nom, numéro d'inscription, en-têtes
+  d'exercice comme "التعليم 1", "سؤال 2", "Exercice", etc.).
+- Utilise les repères du texte (numéros de question, mots-clés de l'énoncé) pour
+  associer chaque réponse à sa question.
+- Si tu ne trouves rien pour une question, mets une chaîne vide "".
+- Chaque numéro de la liste des questions doit apparaître exactement une fois.
+
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte avant ni après.
+"""
+
+USER_STRUCTURATION = """\
+Questions attendues (numéros et énoncés) :
+{questions_json}
+
+Texte brut OCR de la copie :
+\"\"\"
+{texte_ocr}
+\"\"\"
+
+Renvoie le JSON : {{"langue_detectee": "fr|ar|mixte",
+"transcriptions": [{{"numero": <int>, "transcription": <str>}}, ...]}}
+"""
+
+# --------------------------------------------------------------------------- #
 # Split 2 appels — étape 2 : notation d'une transcription (validée par le prof)
 # --------------------------------------------------------------------------- #
 
