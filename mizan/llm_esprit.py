@@ -74,8 +74,8 @@ def transcrire_copie(
     """Lit la copie et renvoie {copie_id, langue_detectee, transcriptions}.
 
     Aiguillage selon MIZAN_OCR :
-      * "google"/"paddle" — OCR : texte complet mis sous la 1re question, la
-        structuration fine est laissée au LLM de notation (plus robuste).
+      * "google"/"easyocr"/"paddle" — OCR : texte complet mis sous la 1re
+        question, la structuration fine est laissée au LLM de notation.
       * "llava" — VLM vision (fallback historique).
     """
     from . import ocr
@@ -83,7 +83,7 @@ def transcrire_copie(
     questions = reference.get("questions", [])
     numeros = [q.get("numero") for q in questions]
 
-    if config.OCR in ("google", "paddle"):
+    if config.OCR in ("google", "easyocr", "paddle"):
         texte = ocr.extraire_texte(image_bytes)
         premier = numeros[0] if numeros else 1
         return {
