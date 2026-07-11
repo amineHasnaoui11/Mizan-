@@ -22,7 +22,9 @@ from mizan import config
 st.set_page_config(page_title="Mizan — correcteur de copies", page_icon="⚖️", layout="wide")
 
 API = config.API_URL
-EXEMPLE = Path(__file__).parent / "data" / "exemple_reference.json"
+DATA = Path(__file__).parent / "data"
+EXEMPLE = DATA / "exemple_reference.json"
+EXEMPLE_AZIZ = DATA / "aziz_p1.json"
 
 
 # --------------------------------------------------------------------------- #
@@ -30,10 +32,14 @@ EXEMPLE = Path(__file__).parent / "data" / "exemple_reference.json"
 # --------------------------------------------------------------------------- #
 
 
-def _charger_exemple() -> str:
-    if EXEMPLE.exists():
-        return EXEMPLE.read_text(encoding="utf-8")
+def _charger_fichier(chemin: Path) -> str:
+    if chemin.exists():
+        return chemin.read_text(encoding="utf-8")
     return "{}"
+
+
+def _charger_exemple() -> str:
+    return _charger_fichier(EXEMPLE)
 
 
 def _couleur_ratio(obtenus: float, maxi: float) -> str:
@@ -127,8 +133,14 @@ if config.PROVIDER == "esprit":
 
 with st.sidebar:
     st.header("1. Référence (corrigé + barème)")
-    if st.button("Charger l'exemple SVT", use_container_width=True):
-        st.session_state["reference_txt"] = _charger_exemple()
+    col_ex1, col_ex2 = st.columns(2)
+    with col_ex1:
+        if st.button("Exemple SVT (fr)", use_container_width=True):
+            st.session_state["reference_txt"] = _charger_exemple()
+    with col_ex2:
+        if st.button("Copie arabe (Aziz)", use_container_width=True,
+                     help="Barème réel — SVT 6ème, sang/nutrition, en arabe."):
+            st.session_state["reference_txt"] = _charger_fichier(EXEMPLE_AZIZ)
     reference_txt = st.text_area(
         "JSON de référence",
         value=st.session_state.get("reference_txt", _charger_exemple()),
