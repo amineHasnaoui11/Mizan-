@@ -30,12 +30,24 @@ def _maybe_preprocess(image_bytes: bytes, binariser: bool) -> bytes:
 
 
 def ocr_google(image_bytes: bytes) -> str:
-    """Texte extrait par Google Cloud Vision (manuscrit + imprimé, ar/fr)."""
+    """Texte extrait par Google Cloud Vision (manuscrit + imprimé, ar/fr).
+
+    Authentification : clé API (config.GOOGLE_API_KEY) si présente — pratique
+    quand l'organisation bloque les clés JSON de compte de service ; sinon
+    Application Default Credentials (GOOGLE_APPLICATION_CREDENTIALS).
+    """
     from google.cloud import vision  # import paresseux
 
     # Vision gère déjà l'angle/lumière : binarisation désactivée par défaut ici.
     data = _maybe_preprocess(image_bytes, binariser=False)
-    client = vision.ImageAnnotatorClient()
+    if config.GOOGLE_API_KEY:
+        from google.api_core.client_options import ClientOptions
+
+        client = vision.ImageAnnotatorClient(
+            client_options=ClientOptions(api_key=config.GOOGLE_API_KEY)
+        )
+    else:
+        client = vision.ImageAnnotatorClient()
     image = vision.Image(content=data)
     resp = client.document_text_detection(
         image=image,

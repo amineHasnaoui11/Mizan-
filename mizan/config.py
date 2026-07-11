@@ -66,6 +66,13 @@ EASYOCR_LANGS = [
     s.strip() for s in os.getenv("MIZAN_EASYOCR_LANGS", "ar,en").split(",") if s.strip()
 ]
 
+# Google Cloud Vision : deux modes d'authentification.
+#   * Clé API simple (GOOGLE_API_KEY) — une chaîne, aucun fichier. Utile quand
+#     l'organisation bloque les clés JSON de compte de service
+#     (iam.disableServiceAccountKeyCreation).
+#   * Sinon, le client retombe sur GOOGLE_APPLICATION_CREDENTIALS (clé JSON).
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "").strip()
+
 
 def require_api_key() -> str:
     """Retourne la clé API du fournisseur actif, ou lève une erreur explicite."""
