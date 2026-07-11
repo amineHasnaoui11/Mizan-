@@ -56,6 +56,13 @@ async def _read_image(copie: UploadFile) -> tuple[bytes, str]:
     return data, media_type
 
 
+async def _read_images(copies: list[UploadFile]) -> list[tuple[bytes, str]]:
+    """Lit toutes les pages d'une copie (upload multi-fichiers)."""
+    if not copies:
+        raise HTTPException(400, "Aucune image fournie.")
+    return [await _read_image(c) for c in copies]
+
+
 def _handle_anthropic_errors(fn):
     """Convertit les erreurs API en réponses HTTP lisibles."""
     try:
@@ -81,15 +88,18 @@ def racine() -> dict:
 async def corriger(
     reference: str = Form(...),
     copie_id: str = Form(...),
-    copie: UploadFile = File(...),
+    copie: list[UploadFile] = File(...),
     avec_corrige: bool = Form(True),
 ) -> dict:
-    """1 appel : image + référence -> correction complète."""
+    """1 appel : image(s) + référence -> correction complète.
+
+    `copie` accepte plusieurs fichiers = les pages d'une même copie.
+    """
     ref = _parse_reference(reference)
-    image_bytes, media_type = await _read_image(copie)
+    images = await _read_images(copie)
     resultat = _handle_anthropic_errors(
         lambda: correcteur.corriger_copie(
-            ref, image_bytes, media_type, copie_id, avec_corrige=avec_corrige
+            ref, images, copie_id, avec_corrige=avec_corrige
         )
     )
     return resultat.model_dump()
@@ -99,13 +109,16 @@ async def corriger(
 async def transcrire(
     reference: str = Form(...),
     copie_id: str = Form(...),
-    copie: UploadFile = File(...),
+    copie: list[UploadFile] = File(...),
 ) -> dict:
-    """Split étape 1 : image -> transcriptions par question (à relire par le prof)."""
+    """Split étape 1 : image(s) -> transcriptions par question (à relire).
+
+    `copie` accepte plusieurs fichiers = les pages d'une même copie.
+    """
     ref = _parse_reference(reference)
-    image_bytes, media_type = await _read_image(copie)
+    images = await _read_images(copie)
     return _handle_anthropic_errors(
-        lambda: correcteur.transcrire_copie(ref, image_bytes, media_type, copie_id)
+        lambda: correcteur.transcrire_copie(ref, images, copie_id)
     )
 
 

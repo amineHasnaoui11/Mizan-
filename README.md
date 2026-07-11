@@ -99,16 +99,21 @@ La lecture de la copie est pilotée par `MIZAN_OCR` :
 
 | Endpoint | Entrée | Sortie |
 |---|---|---|
-| `POST /corriger` | `reference` (JSON), `copie_id`, `copie` (image), `avec_corrige` | correction complète |
-| `POST /transcrire` | `reference`, `copie_id`, `copie` | transcriptions par question |
+| `POST /corriger` | `reference` (JSON), `copie_id`, `copie` (**1..N images**), `avec_corrige` | correction complète |
+| `POST /transcrire` | `reference`, `copie_id`, `copie` (**1..N images**) | transcriptions par question |
 | `POST /noter` | JSON `{reference, copie_id, transcriptions}` | correction notée |
 
-Exemple :
+`copie` accepte **plusieurs fichiers** : dépose toutes les pages d'une même copie
+et elles sont lues ensemble puis notées en une seule fois (note globale sur le
+barème complet, p. ex. /20).
+
+Exemple (copie multi-pages) :
 
 ```bash
-curl -F reference="$(cat data/exemple_reference.json)" \
+curl -F reference="$(cat data/aziz_p1.json)" \
      -F copie_id=eleve_001 \
-     -F copie=@copie.jpg \
+     -F copie=@page1.jpg \
+     -F copie=@page2.jpg \
      http://localhost:8000/corriger
 ```
 

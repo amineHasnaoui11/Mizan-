@@ -37,6 +37,11 @@ def _image_block(image_bytes: bytes, media_type: str) -> dict:
     }
 
 
+def _image_blocks(images: list[tuple[bytes, str]]) -> list[dict]:
+    """Un bloc image par page de la copie."""
+    return [_image_block(img, mt) for img, mt in images]
+
+
 def _texte_reponse(response) -> str:
     """Concatène les blocs texte d'une réponse (ignore les blocs thinking)."""
     return "".join(b.text for b in response.content if b.type == "text")
@@ -49,13 +54,13 @@ def _texte_reponse(response) -> str:
 
 def corriger_copie(
     reference: dict,
-    image_bytes: bytes,
-    media_type: str,
+    images: list[tuple[bytes, str]],
     copie_id: str,
     avec_corrige: bool = True,
 ) -> Correction:
-    """Corrige une copie en un seul appel (transcription + notation + feedback).
+    """Corrige une copie (1 ou plusieurs pages) en un seul appel.
 
+    `images` : liste de (image_bytes, media_type), une entrée par page.
     avec_corrige=False bascule en Option 3 (raisonnement libre, sans corrigé).
     """
     ref_json = prompts.reference_pour_prompt(reference, avec_corrige=avec_corrige)
@@ -76,7 +81,7 @@ def corriger_copie(
             {
                 "role": "user",
                 "content": [
-                    _image_block(image_bytes, media_type),
+                    *_image_blocks(images),
                     {"type": "text", "text": user_text},
                 ],
             }
@@ -93,12 +98,12 @@ def corriger_copie(
 
 def transcrire_copie(
     reference: dict,
-    image_bytes: bytes,
-    media_type: str,
+    images: list[tuple[bytes, str]],
     copie_id: str,
 ) -> dict:
-    """Lit la copie et renvoie les transcriptions par question, sans noter.
+    """Lit la copie (1 ou plusieurs pages) et renvoie les transcriptions.
 
+    `images` : liste de (image_bytes, media_type), une entrée par page.
     Renvoie {"copie_id", "langue_detectee", "transcriptions": [{numero, transcription}]}.
     """
     questions = [
@@ -142,7 +147,7 @@ def transcrire_copie(
             {
                 "role": "user",
                 "content": [
-                    _image_block(image_bytes, media_type),
+                    *_image_blocks(images),
                     {"type": "text", "text": user_text},
                 ],
             }

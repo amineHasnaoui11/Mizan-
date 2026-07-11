@@ -123,16 +123,18 @@ def structurer_texte(reference: dict, texte_ocr: str) -> dict:
 
 def transcrire_copie(
     reference: dict,
-    image_bytes: bytes,
-    media_type: str,
+    images: list[tuple[bytes, str]],
     copie_id: str,
 ) -> dict:
-    """Lit la copie et renvoie {copie_id, langue_detectee, transcriptions}.
+    """Lit une copie (1 ou plusieurs pages) et renvoie
+    {copie_id, langue_detectee, transcriptions}.
+
+    `images` : liste de (image_bytes, media_type), une entrée par page.
 
     Aiguillage selon MIZAN_OCR :
-      * "google"/"easyocr"/"paddle" — OCR : le texte brut est ensuite
-        structuré par question (Llama, étape 3 du plan) avant relecture prof.
-      * "llava" — VLM vision (fallback historique).
+      * "google"/"easyocr"/"paddle" — OCR page par page, textes concaténés,
+        puis structuration par question (Llama, étape 3 du plan) avant prof.
+      * "llava" — VLM vision (fallback historique), toutes les pages en 1 appel.
     """
     from . import ocr
 
@@ -140,7 +142,14 @@ def transcrire_copie(
     numeros = [q.get("numero") for q in questions]
 
     if config.OCR in ("google", "easyocr", "paddle"):
-        texte = ocr.extraire_texte(image_bytes)
+        morceaux = []
+        for idx, (img, _mt) in enumerate(images, 1):
+            texte_page = ocr.extraire_texte(img)
+            if len(images) > 1:
+                morceaux.append(f"=== الصفحة {idx} ===\n{texte_page}")
+            else:
+                morceaux.append(texte_page)
+        texte = "\n\n".join(morceaux)
         structure = structurer_texte(reference, texte)
         return {
             "copie_id": copie_id,
@@ -148,12 +157,13 @@ def transcrire_copie(
             "transcriptions": structure["transcriptions"],
         }
 
-    # --- Mode LLaVA (vision) ---
+    # --- Mode LLaVA (vision) — toutes les pages dans un seul appel ---
     liste = "\n".join(
         f"- Q{q.get('numero')}: {q.get('enonce', '')}" for q in questions
     )
     prompt = (
-        "Lis attentivement cette copie manuscrite d'élève (français et/ou arabe). "
+        "Lis attentivement cette copie manuscrite d'élève (français et/ou arabe), "
+        "sur une ou plusieurs pages. "
         "Transcris fidèlement ce que l'élève a écrit, sans corriger ses fautes. "
         "Si un passage est illisible, écris [illisible].\n\n"
         f"Questions attendues :\n{liste}\n\n"
@@ -162,19 +172,16 @@ def transcrire_copie(
         '[{"numero": <int>, "transcription": "<texte lu>"}]}'
     )
 
+    contenu_msg = [{"type": "text", "text": prompt}]
+    for img, mt in images:
+        contenu_msg.append(
+            {"type": "image_url", "image_url": {"url": _data_uri(img, mt)}}
+        )
     resp = _client().chat.completions.create(
         model=config.ESPRIT_VISION_MODEL,
         max_tokens=1500,
         temperature=0.1,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": _data_uri(image_bytes, media_type)}},
-                ],
-            }
-        ],
+        messages=[{"role": "user", "content": contenu_msg}],
     )
     contenu = resp.choices[0].message.content or ""
     try:
@@ -239,14 +246,14 @@ def noter_transcription(
 
 def corriger_copie(
     reference: dict,
-    image_bytes: bytes,
-    media_type: str,
+    images: list[tuple[bytes, str]],
     copie_id: str,
     avec_corrige: bool = True,
 ) -> Correction:
-    """Correction complète côté Esprit : LLaVA transcrit puis Llama note.
+    """Correction complète côté Esprit : OCR/LLaVA transcrit puis Llama note.
 
+    `images` : liste de (image_bytes, media_type), une entrée par page.
     avec_corrige est ignoré ici (l'Option 3 sans corrigé reste Anthropic-only).
     """
-    trans = transcrire_copie(reference, image_bytes, media_type, copie_id)
+    trans = transcrire_copie(reference, images, copie_id)
     return noter_transcription(reference, trans["transcriptions"], copie_id)

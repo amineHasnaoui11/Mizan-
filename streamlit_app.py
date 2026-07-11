@@ -60,8 +60,8 @@ def _badge(texte: str, couleur: str) -> str:
     )
 
 
-def _afficher_correction(correction: dict, image_file) -> None:
-    """Affiche la correction : photo à gauche, détail par question à droite."""
+def _afficher_correction(correction: dict, image_files) -> None:
+    """Affiche la correction : photo(s) à gauche, détail par question à droite."""
     note = correction.get("note_globale", 0)
     note_max = correction.get("note_max", 0)
     st.markdown(f"### Note proposée : **{note} / {note_max}**  ·  "
@@ -72,8 +72,8 @@ def _afficher_correction(correction: dict, image_file) -> None:
     col_photo, col_detail = st.columns([1, 1.4], gap="large")
     with col_photo:
         st.caption("Copie de l'élève")
-        if image_file is not None:
-            st.image(image_file, use_container_width=True)
+        for f in image_files or []:
+            st.image(f, use_container_width=True)
 
     with col_detail:
         for q in correction.get("questions", []):
@@ -150,9 +150,15 @@ with st.sidebar:
 
     st.header("2. Copie de l'élève")
     copie_id = st.text_input("copie_id", value="eleve_001")
-    image_file = st.file_uploader(
-        "Photo de la copie", type=["jpg", "jpeg", "png", "webp"]
+    image_files = st.file_uploader(
+        "Photos de la copie (plusieurs pages possibles)",
+        type=["jpg", "jpeg", "png", "webp"],
+        accept_multiple_files=True,
+        help="Ajoute toutes les pages d'une même copie : elles seront lues "
+        "ensemble et notées en une seule fois.",
     )
+    if image_files:
+        st.caption(f"📄 {len(image_files)} page(s) chargée(s)")
 
     st.header("3. Options")
     avec_corrige = st.checkbox(
@@ -177,11 +183,10 @@ onglet_rapide, onglet_hitl = st.tabs(
 
 # ---- Mode rapide ---------------------------------------------------------- #
 with onglet_rapide:
-    st.write("La photo part directement : l'IA transcrit **et** note en une passe.")
-    pret = reference and image_file is not None
+    st.write("La/les photo(s) partent directement : l'IA transcrit **et** note en une passe.")
+    pret = reference and image_files
     if st.button("Corriger la copie", type="primary", disabled=not pret):
         with st.spinner("Correction en cours…"):
-            image_file.seek(0)
             resp = requests.post(
                 f"{API}/corriger",
                 data={
@@ -189,18 +194,20 @@ with onglet_rapide:
                     "copie_id": copie_id,
                     "avec_corrige": str(avec_corrige).lower(),
                 },
-                files={"copie": (image_file.name, image_file.getvalue(), image_file.type)},
-                timeout=180,
+                files=[
+                    ("copie", (f.name, f.getvalue(), f.type)) for f in image_files
+                ],
+                timeout=300,
             )
         if resp.ok:
             correction = resp.json()
             st.success("Correction proposée — à valider par l'enseignant.")
-            _afficher_correction(correction, image_file)
+            _afficher_correction(correction, image_files)
             _telecharger(correction, copie_id)
         else:
             st.error(f"Erreur {resp.status_code} : {resp.text}")
     elif not pret:
-        st.info("Renseigne une référence valide et charge une photo de copie.")
+        st.info("Renseigne une référence valide et charge au moins une photo de copie.")
 
 # ---- Mode human-in-the-loop ---------------------------------------------- #
 with onglet_hitl:
@@ -208,19 +215,20 @@ with onglet_hitl:
         "**Étape 1** — l'IA lit la copie. **Étape 2** — tu relis/corriges la "
         "transcription. **Étape 3** — l'IA note la version que tu as validée."
     )
-    pret = reference and image_file is not None
+    pret = reference and image_files
 
     if st.button("Étape 1 — Transcrire la copie", disabled=not pret):
         with st.spinner("Lecture de la copie…"):
-            image_file.seek(0)
             resp = requests.post(
                 f"{API}/transcrire",
                 data={
                     "reference": json.dumps(reference, ensure_ascii=False),
                     "copie_id": copie_id,
                 },
-                files={"copie": (image_file.name, image_file.getvalue(), image_file.type)},
-                timeout=180,
+                files=[
+                    ("copie", (f.name, f.getvalue(), f.type)) for f in image_files
+                ],
+                timeout=300,
             )
         if resp.ok:
             st.session_state["transcriptions"] = resp.json().get("transcriptions", [])
@@ -234,8 +242,8 @@ with onglet_hitl:
         col_photo, col_edit = st.columns([1, 1.4], gap="large")
         with col_photo:
             st.caption("Copie de l'élève")
-            if image_file is not None:
-                st.image(image_file, use_container_width=True)
+            for f in image_files or []:
+                st.image(f, use_container_width=True)
         with col_edit:
             st.caption("Étape 2 — relis et corrige la transcription")
             corrigees = []
@@ -263,7 +271,7 @@ with onglet_hitl:
                 if resp.ok:
                     correction = resp.json()
                     st.success("Note proposée à partir de la transcription validée.")
-                    _afficher_correction(correction, image_file)
+                    _afficher_correction(correction, image_files)
                     _telecharger(correction, correction.get("copie_id", copie_id))
                 else:
                     st.error(f"Erreur {resp.status_code} : {resp.text}")
