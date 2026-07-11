@@ -83,6 +83,29 @@ def ocr_paddle(image_bytes: bytes) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# EasyOCR (open-source / offline) — s'installe proprement via pip sur Windows
+# --------------------------------------------------------------------------- #
+
+_easy = None
+
+
+def ocr_easyocr(image_bytes: bytes) -> str:
+    """Texte extrait par EasyOCR (arabe + français). Modèle chargé une fois."""
+    global _easy
+    import cv2
+    import easyocr  # import paresseux
+    import numpy as np
+
+    if _easy is None:
+        _easy = easyocr.Reader(["ar", "fr"], gpu=False)
+
+    data = _maybe_preprocess(image_bytes, binariser=True)
+    arr = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+    lignes = _easy.readtext(arr, detail=0, paragraph=True)
+    return "\n".join(lignes).strip()
+
+
+# --------------------------------------------------------------------------- #
 # Dispatcher
 # --------------------------------------------------------------------------- #
 
@@ -92,8 +115,10 @@ def extraire_texte(image_bytes: bytes) -> str:
     moteur = config.OCR
     if moteur == "google":
         return ocr_google(image_bytes)
+    if moteur == "easyocr":
+        return ocr_easyocr(image_bytes)
     if moteur == "paddle":
         return ocr_paddle(image_bytes)
     raise ValueError(
-        f"Moteur OCR inconnu : {moteur!r} (attendus : google, paddle, llava)"
+        f"Moteur OCR inconnu : {moteur!r} (attendus : google, easyocr, paddle, llava)"
     )

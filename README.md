@@ -69,7 +69,8 @@ La lecture de la copie est pilotée par `MIZAN_OCR` :
 | `MIZAN_OCR` | Moteur | Manuscrit arabe | Setup |
 |---|---|---|---|
 | `google` | Google Cloud Vision | ✅ Très bon (recommandé) | Compte Google Cloud + clé JSON (`GOOGLE_APPLICATION_CREDENTIALS`), 1000 img/mois gratuites |
-| `paddle` | PaddleOCR (open-source, offline) | 🟠 Correct | `pip install paddleocr paddlepaddle` |
+| `easyocr` | EasyOCR (open-source, offline) | 🟠 Correct | `pip install easyocr` — s'installe bien sur Windows |
+| `paddle` | PaddleOCR (open-source, offline) | 🟠 Correct | `pip install paddleocr paddlepaddle` (wheels Windows capricieuses) |
 | `llava` | LLaVA via la Token Factory | ❌ Faible | Aucun (défaut historique) |
 
 `MIZAN_PREPROCESS=true` active le nettoyage OpenCV (deskew, binarisation, débruitage, CLAHE) — inutile avec Google Vision, utile avec PaddleOCR.

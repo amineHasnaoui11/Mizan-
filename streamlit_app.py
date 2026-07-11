@@ -116,6 +116,7 @@ st.caption(
 if config.PROVIDER == "esprit":
     _lecteur = {
         "google": "Google Cloud Vision (OCR)",
+        "easyocr": "EasyOCR",
         "paddle": "PaddleOCR",
         "llava": "LLaVA (vision)",
     }.get(config.OCR, config.OCR)
