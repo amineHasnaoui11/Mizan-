@@ -97,7 +97,9 @@ def ocr_easyocr(image_bytes: bytes) -> str:
     import numpy as np
 
     if _easy is None:
-        _easy = easyocr.Reader(["ar", "fr"], gpu=False)
+        # EasyOCR interdit l'arabe avec le français : on passe ar+en (le modèle
+        # latin "en" lit quand même les mots français). Configurable via .env.
+        _easy = easyocr.Reader(config.EASYOCR_LANGS, gpu=False)
 
     data = _maybe_preprocess(image_bytes, binariser=True)
     arr = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)

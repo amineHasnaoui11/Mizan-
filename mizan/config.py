@@ -60,6 +60,12 @@ OCR = os.getenv("MIZAN_OCR", "llava").lower()
 # recommandé avec PaddleOCR. Défaut : désactivé.
 PREPROCESS = os.getenv("MIZAN_PREPROCESS", "false").lower() in ("1", "true", "yes")
 
+# Langues EasyOCR. ⚠️ EasyOCR n'autorise l'arabe qu'avec ar/fa/ur/ug/en (pas
+# "fr"). "en" lit le script latin, donc le français passe quand même.
+EASYOCR_LANGS = [
+    s.strip() for s in os.getenv("MIZAN_EASYOCR_LANGS", "ar,en").split(",") if s.strip()
+]
+
 
 def require_api_key() -> str:
     """Retourne la clé API du fournisseur actif, ou lève une erreur explicite."""
