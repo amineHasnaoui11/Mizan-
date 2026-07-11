@@ -5,6 +5,8 @@ httpx>=0.27
 google-cloud-vision>=3.7
 opencv-python-headless>=4.9
 numpy>=1.26
+# Lecture des copies au format PDF (rendu page par page)
+pymupdf>=1.24
 # PaddleOCR (OCR open-source/offline) est optionnel et lourd — installe-le
 # séparément si tu choisis MIZAN_OCR=paddle :
 #   pip install paddleocr paddlepaddle

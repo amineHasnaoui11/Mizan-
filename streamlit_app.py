@@ -60,6 +60,27 @@ def _badge(texte: str, couleur: str) -> str:
     )
 
 
+def _est_pdf(f) -> bool:
+    return (f.type or "") == "application/pdf" or (f.name or "").lower().endswith(".pdf")
+
+
+def _apercu_fichiers(files) -> None:
+    """Affiche les pages de la copie (images directes, PDF rendus page par page)."""
+    for f in files or []:
+        if _est_pdf(f):
+            try:
+                import fitz  # PyMuPDF
+
+                doc = fitz.open(stream=f.getvalue(), filetype="pdf")
+                for page in doc:
+                    pix = page.get_pixmap(matrix=fitz.Matrix(1.4, 1.4))
+                    st.image(pix.tobytes("png"), use_container_width=True)
+            except Exception:
+                st.info(f"📄 {f.name} (PDF — aperçu indisponible)")
+        else:
+            st.image(f, use_container_width=True)
+
+
 def _afficher_correction(correction: dict, image_files) -> None:
     """Affiche la correction : photo(s) à gauche, détail par question à droite."""
     note = correction.get("note_globale", 0)
@@ -72,8 +93,7 @@ def _afficher_correction(correction: dict, image_files) -> None:
     col_photo, col_detail = st.columns([1, 1.4], gap="large")
     with col_photo:
         st.caption("Copie de l'élève")
-        for f in image_files or []:
-            st.image(f, use_container_width=True)
+        _apercu_fichiers(image_files)
 
     with col_detail:
         for q in correction.get("questions", []):
@@ -151,14 +171,14 @@ with st.sidebar:
     st.header("2. Copie de l'élève")
     copie_id = st.text_input("copie_id", value="eleve_001")
     image_files = st.file_uploader(
-        "Photos de la copie (plusieurs pages possibles)",
-        type=["jpg", "jpeg", "png", "webp"],
+        "Copie de l'élève (images ou PDF, plusieurs pages possibles)",
+        type=["jpg", "jpeg", "png", "webp", "pdf"],
         accept_multiple_files=True,
-        help="Ajoute toutes les pages d'une même copie : elles seront lues "
-        "ensemble et notées en une seule fois.",
+        help="Ajoute toutes les pages d'une même copie (photos et/ou un PDF "
+        "multi-pages) : elles seront lues ensemble et notées en une seule fois.",
     )
     if image_files:
-        st.caption(f"📄 {len(image_files)} page(s) chargée(s)")
+        st.caption(f"📄 {len(image_files)} fichier(s) chargé(s)")
 
     st.header("3. Options")
     avec_corrige = st.checkbox(
@@ -242,8 +262,7 @@ with onglet_hitl:
         col_photo, col_edit = st.columns([1, 1.4], gap="large")
         with col_photo:
             st.caption("Copie de l'élève")
-            for f in image_files or []:
-                st.image(f, use_container_width=True)
+            _apercu_fichiers(image_files)
         with col_edit:
             st.caption("Étape 2 — relis et corrige la transcription")
             corrigees = []

@@ -28,6 +28,34 @@ _MEDIA_TYPES = {
     "image/webp",
     "image/gif",
 }
+_PDF_TYPES = {"application/pdf", "application/x-pdf"}
+# On vise ~2200 px sur le grand côté : assez pour l'OCR manuscrit, sans
+# produire des images énormes (limite Google Vision ~20 Mo/image).
+_PDF_MAX_COTE = 2200
+
+
+def _pdf_to_images(data: bytes) -> list[tuple[bytes, str]]:
+    """Rend chaque page d'un PDF en JPEG (une image par page), taille bornée."""
+    try:
+        import fitz  # PyMuPDF, import paresseux
+    except ImportError as e:  # pragma: no cover
+        raise HTTPException(
+            500,
+            "Lecture PDF indisponible : installe PyMuPDF (pip install pymupdf).",
+        ) from e
+    try:
+        doc = fitz.open(stream=data, filetype="pdf")
+    except Exception as e:
+        raise HTTPException(400, f"PDF illisible : {e}") from e
+    pages: list[tuple[bytes, str]] = []
+    for page in doc:
+        cote = max(page.rect.width, page.rect.height) or 1
+        zoom = min(2.0, _PDF_MAX_COTE / cote)  # jamais plus de 2x
+        pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), alpha=False)
+        pages.append((pix.tobytes("jpeg"), "image/jpeg"))
+    if not pages:
+        raise HTTPException(400, "PDF sans page.")
+    return pages
 
 
 def _parse_reference(reference_str: str) -> dict:
@@ -42,25 +70,35 @@ def _parse_reference(reference_str: str) -> dict:
     return data
 
 
-async def _read_image(copie: UploadFile) -> tuple[bytes, str]:
+async def _read_fichier(copie: UploadFile) -> list[tuple[bytes, str]]:
+    """Lit un fichier uploadé -> liste de (bytes, media_type).
+
+    Une image -> une entrée. Un PDF -> une entrée par page.
+    """
     media_type = copie.content_type or "image/jpeg"
+    nom = (copie.filename or "").lower()
+    data = await copie.read()
+    if not data:
+        raise HTTPException(400, "Fichier vide.")
+    if media_type in _PDF_TYPES or nom.endswith(".pdf"):
+        return _pdf_to_images(data)
     if media_type not in _MEDIA_TYPES:
         raise HTTPException(
             415,
-            f"Type d'image non supporté : {media_type}. "
-            f"Attendus : {', '.join(sorted(_MEDIA_TYPES))}.",
+            f"Type non supporté : {media_type}. "
+            f"Attendus : {', '.join(sorted(_MEDIA_TYPES))}, application/pdf.",
         )
-    data = await copie.read()
-    if not data:
-        raise HTTPException(400, "Fichier image vide.")
-    return data, media_type
+    return [(data, media_type)]
 
 
 async def _read_images(copies: list[UploadFile]) -> list[tuple[bytes, str]]:
-    """Lit toutes les pages d'une copie (upload multi-fichiers)."""
+    """Lit toutes les pages d'une copie (images et/ou PDF multi-pages)."""
     if not copies:
-        raise HTTPException(400, "Aucune image fournie.")
-    return [await _read_image(c) for c in copies]
+        raise HTTPException(400, "Aucun fichier fourni.")
+    images: list[tuple[bytes, str]] = []
+    for c in copies:
+        images.extend(await _read_fichier(c))
+    return images
 
 
 def _handle_anthropic_errors(fn):
