@@ -1,0 +1,42 @@
+{
+  "devoir_id": "ctrl_svt_6eme_ch3",
+  "matiere": "SVT",
+  "niveau": "6ème",
+  "langue": "mixte",
+  "note_max_devoir": 6,
+  "questions": [
+    {
+      "numero": 1,
+      "enonce": "Quelle est la capitale de la France ?",
+      "type": "factuelle",
+      "corrige": "Paris",
+      "note_max": 2,
+      "bareme": [
+        {
+          "critere": "Cite la bonne capitale",
+          "points_max": 2,
+          "regle": "2 si 'Paris' est cité (tolérant fautes/OCR), 0 sinon"
+        }
+      ]
+    },
+    {
+      "numero": 2,
+      "enonce": "Explique le rôle de la photosynthèse.",
+      "type": "ouverte",
+      "corrige": "La photosynthèse transforme la lumière en énergie chimique (glucose), en absorbant du CO2 et en rejetant de l'O2.",
+      "note_max": 4,
+      "bareme": [
+        {
+          "critere": "Transformation lumière → énergie/glucose",
+          "points_max": 2,
+          "regle": "2 si l'idée est présente, 1 si partielle, 0 sinon"
+        },
+        {
+          "critere": "Échanges gazeux (CO2 absorbé, O2 rejeté)",
+          "points_max": 2,
+          "regle": "1 point par gaz correctement associé"
+        }
+      ]
+    }
+  ]
+}
