@@ -5,6 +5,11 @@ venv/
 env/
 .env
 .env.local
+# Clé de compte de service Google Cloud (secret — ne jamais committer)
+google-key.json
+google-*.json
+*-credentials.json
+secrets/
 *.egg-info/
 .pytest_cache/
 .streamlit/secrets.toml
