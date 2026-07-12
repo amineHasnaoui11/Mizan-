@@ -5,6 +5,7 @@ import { colors } from "./src/theme";
 import { AccueilScreen } from "./src/screens/AccueilScreen";
 import { ScanScreen } from "./src/screens/ScanScreen";
 import { ResultatScreen } from "./src/screens/ResultatScreen";
+import { ExerciceScreen } from "./src/screens/ExerciceScreen";
 import type { RootStackParamList } from "./src/screens/types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -23,6 +24,7 @@ export default function App() {
       >
         <Stack.Screen name="Accueil" component={AccueilScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Scan" component={ScanScreen} options={{ title: "Scanner une copie" }} />
+        <Stack.Screen name="Exercice" component={ExerciceScreen} options={{ title: "Corriger un exercice" }} />
         <Stack.Screen name="Resultat" component={ResultatScreen} options={{ title: "Résultat" }} />
       </Stack.Navigator>
     </NavigationContainer>

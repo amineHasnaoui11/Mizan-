@@ -17,7 +17,15 @@ export function AccueilScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.cta}>
-          <Button title="📷 Scanner une copie" onPress={() => navigation.navigate("Scan")} />
+          <Button title="📷 Scanner une copie (noter)" onPress={() => navigation.navigate("Scan")} />
+          <Button
+            title="🧠 Corriger un exercice (libre)"
+            variant="outline"
+            onPress={() => navigation.navigate("Exercice")}
+          />
+          <Text style={styles.hint}>
+            « Noter » = contre un devoir enregistré. « Libre » = corrigé direct, sans devoir.
+          </Text>
         </View>
       </View>
     </SafeAreaView>
@@ -31,5 +39,6 @@ const styles = StyleSheet.create({
   logo: { fontSize: 56, marginBottom: 8 },
   title: { fontSize: 40, fontWeight: "700", color: colors.ink },
   tagline: { fontSize: 15, color: colors.muted, marginTop: 8 },
-  cta: {},
+  cta: { gap: 12 },
+  hint: { color: colors.muted, fontSize: 13, textAlign: "center", marginTop: 4 },
 });

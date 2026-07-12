@@ -191,6 +191,17 @@ async def construire_reference(
     )
 
 
+@app.post("/assistant")
+async def assistant(
+    copie: list[UploadFile] = File(...),
+    consigne: str = Form(""),
+) -> dict:
+    """Mode assistant libre : scanne un exercice, renvoie un corrigé (sans devoir)."""
+    images = await _read_images(copie)
+    texte = _handle_anthropic_errors(lambda: correcteur.assistant_libre(images, consigne))
+    return {"texte": texte}
+
+
 @app.get("/devoirs")
 def lister_devoirs() -> list[dict]:
     """Résumé des devoirs enregistrés (partagé web + mobile)."""

@@ -82,6 +82,13 @@ export async function transcrire(
   return jsonOrThrow(await fetch(`${API_BASE}/transcrire`, { method: "POST", body: fd }));
 }
 
+export async function assistant(pages: ImagePage[], consigne: string): Promise<{ texte: string }> {
+  const fd = new FormData();
+  pages.forEach((p) => fd.append("copie", p as unknown as Blob));
+  fd.append("consigne", consigne);
+  return jsonOrThrow(await fetch(`${API_BASE}/assistant`, { method: "POST", body: fd }));
+}
+
 export async function noter(
   reference: Reference,
   copieId: string,

@@ -53,6 +53,27 @@ def _texte_reponse(response) -> str:
 # --------------------------------------------------------------------------- #
 
 
+def assistant_libre(
+    images: list[tuple[bytes, str]],
+    consigne: str = "",
+) -> str:
+    """Mode assistant : Claude lit la feuille (exercice) et renvoie un corrigé libre."""
+    consigne = consigne.strip() or "Donne le corrigé détaillé de cet exercice."
+    response = _client().messages.create(
+        model=config.MODEL,
+        max_tokens=config.MAX_TOKENS,
+        system=prompts.SYSTEM_ASSISTANT,
+        output_config={"effort": config.EFFORT},
+        messages=[
+            {
+                "role": "user",
+                "content": [*_image_blocks(images), {"type": "text", "text": consigne}],
+            }
+        ],
+    )
+    return _texte_reponse(response).strip()
+
+
 def construire_reference(
     devoir_images: list[tuple[bytes, str]],
     bareme_images: list[tuple[bytes, str]],

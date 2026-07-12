@@ -80,6 +80,44 @@ def _ocr_groupe(images: list[tuple[bytes, str]]) -> str:
     return "\n\n".join(morceaux).strip()
 
 
+def assistant_libre(
+    images: list[tuple[bytes, str]],
+    consigne: str = "",
+) -> str:
+    """Mode assistant : lit une feuille (exercice) et renvoie un corrigé libre.
+
+    Aucun barème/devoir requis — comme un chat avec l'IA, mais avec le scan.
+    """
+    consigne = consigne.strip() or "Donne le corrigé détaillé de cet exercice."
+
+    if config.OCR in ("google", "easyocr", "paddle"):
+        contenu = _ocr_groupe(images)
+        if not contenu:
+            raise ValueError("Aucun texte lisible dans la feuille.")
+        resp = _client().chat.completions.create(
+            model=config.ESPRIT_TEXT_MODEL,
+            max_tokens=config.MAX_TOKENS,
+            temperature=0.2,
+            messages=[
+                {"role": "system", "content": prompts.SYSTEM_ASSISTANT},
+                {"role": "user", "content": prompts.USER_ASSISTANT.format(consigne=consigne, contenu=contenu)},
+            ],
+        )
+        return (resp.choices[0].message.content or "").strip()
+
+    # Mode LLaVA (vision) — toutes les pages en un appel.
+    contenu_msg = [{"type": "text", "text": f"{prompts.SYSTEM_ASSISTANT}\n\n{consigne}"}]
+    for img, mt in images:
+        contenu_msg.append({"type": "image_url", "image_url": {"url": _data_uri(img, mt)}})
+    resp = _client().chat.completions.create(
+        model=config.ESPRIT_VISION_MODEL,
+        max_tokens=1500,
+        temperature=0.2,
+        messages=[{"role": "user", "content": contenu_msg}],
+    )
+    return (resp.choices[0].message.content or "").strip()
+
+
 def construire_reference(
     devoir_images: list[tuple[bytes, str]],
     bareme_images: list[tuple[bytes, str]],
