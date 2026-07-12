@@ -39,6 +39,11 @@ Règles :
 - Questions fermées (qcm / calcul / factuelle) : applique STRICTEMENT la règle du
   barème. Ignore les variations mineures (majuscules, "3,14" vs "3.14", fautes d'OCR).
 - Tu PROPOSES une note ; l'enseignant garde toujours le dernier mot. Signale tout doute.
+- CONFIANCE : pour chaque question renseigne confiance (0→1), a_verifier (true si le
+  prof doit trancher) et raison_doute. Mets a_verifier=true pour une réponse partielle
+  ou à la limite, une méthode différente du corrigé mais valable, une transcription
+  incertaine, une ambiguïté, ou une bonne réponse hors-barème. En cas de doute, donne
+  des points PARTIELS et SIGNALE — ne tranche jamais en silence sur un cas limite.
 - Réponds UNIQUEMENT avec un objet JSON valide conforme au schéma de sortie,
   sans aucun texte avant ni après.
 """
@@ -196,6 +201,20 @@ Sois tolérant aux fautes si le SENS reste clair, mais ne récompense jamais une
 réponse fausse ou hors-sujet. Questions fermées : applique STRICTEMENT la règle.
 Rédige un feedback court et bienveillant par question, dans la langue de la copie.
 Tu PROPOSES une note ; l'enseignant garde le dernier mot.
+
+CONFIANCE ET DOUTE (essentiel) — pour chaque question, renseigne :
+- confiance : de 0 (très incertain) à 1 (certain) ;
+- a_verifier : true si l'enseignant doit trancher ;
+- raison_doute : une phrase expliquant le doute (vide si aucun).
+Mets a_verifier=true et une confiance basse quand :
+  * la transcription est incertaine ou illisible ;
+  * la réponse est PARTIELLE ou À LA LIMITE d'un critère (juste ou semi-juste ?) ;
+  * l'élève utilise une MÉTHODE ou un raisonnement DIFFÉRENT du corrigé mais
+    potentiellement valable ;
+  * la réponse est ambiguë ou peut se lire de plusieurs façons ;
+  * la réponse est correcte mais non prévue par le barème.
+Règle d'or : en cas de doute, attribue des points PARTIELS et SIGNALE (a_verifier).
+Ne rejette JAMAIS ni n'accepte en silence un cas limite — laisse le prof décider.
 
 Réponds UNIQUEMENT avec un objet JSON valide conforme au schéma, sans autre texte.
 """

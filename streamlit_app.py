@@ -108,6 +108,15 @@ def _afficher_correction(correction: dict, image_files) -> None:
     if correction.get("feedback_global"):
         st.info(correction["feedback_global"], icon="📝")
 
+    a_verifier = [q for q in correction.get("questions", []) if q.get("a_verifier")]
+    if a_verifier:
+        nums = ", ".join(f"Q{q.get('numero')}" for q in a_verifier)
+        st.warning(
+            f"⚠️ {len(a_verifier)} question(s) à vérifier ({nums}) — "
+            "l'IA a un doute, ta décision prime.",
+            icon="⚠️",
+        )
+
     col_photo, col_detail = st.columns([1, 1.4], gap="large")
     with col_photo:
         st.caption("Copie de l'élève")
@@ -116,12 +125,18 @@ def _afficher_correction(correction: dict, image_files) -> None:
     with col_detail:
         for q in correction.get("questions", []):
             couleur = _couleur_ratio(q.get("note", 0), q.get("note_max", 0))
-            st.markdown(
+            entete = (
                 f"**Question {q.get('numero')}** &nbsp; "
-                + _badge(f"{q.get('note', 0)} / {q.get('note_max', 0)}", couleur),
-                unsafe_allow_html=True,
+                + _badge(f"{q.get('note', 0)} / {q.get('note_max', 0)}", couleur)
             )
+            if q.get("a_verifier"):
+                entete += " &nbsp; " + _badge("⚠️ à vérifier", "#E8A13A")
+            st.markdown(entete, unsafe_allow_html=True)
             with st.container(border=True):
+                if q.get("a_verifier") and q.get("raison_doute"):
+                    conf = q.get("confiance")
+                    conf_txt = f" · confiance {conf:.0%}" if isinstance(conf, (int, float)) else ""
+                    st.caption(f"🤔 Doute : {q['raison_doute']}{conf_txt}")
                 st.caption("Transcription (ce que l'IA a lu)")
                 st.write(q.get("transcription", "") or "_—_")
                 for c in q.get("criteres", []):

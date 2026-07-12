@@ -70,6 +70,15 @@ class QuestionCorrigee(BaseModel):
     note_max: float
     criteres: list[CritereEvalue]
     feedback: str
+    confiance: float = Field(
+        1.0, description="Confiance de l'IA dans cette note, de 0 (incertain) à 1 (sûr)"
+    )
+    a_verifier: bool = Field(
+        False, description="True si le prof doit trancher (cas limite, méthode alternative, illisible)"
+    )
+    raison_doute: str = Field(
+        "", description="Pourquoi ce doute (vide si aucun) — guide la relecture du prof"
+    )
 
 
 class Correction(BaseModel):
@@ -154,6 +163,9 @@ def build_output_json_schema() -> dict:
             "note_max": {"type": "number"},
             "criteres": {"type": "array", "items": critere},
             "feedback": {"type": "string"},
+            "confiance": {"type": "number"},
+            "a_verifier": {"type": "boolean"},
+            "raison_doute": {"type": "string"},
         },
         "required": [
             "numero",
@@ -163,6 +175,9 @@ def build_output_json_schema() -> dict:
             "note_max",
             "criteres",
             "feedback",
+            "confiance",
+            "a_verifier",
+            "raison_doute",
         ],
         "additionalProperties": False,
     }
