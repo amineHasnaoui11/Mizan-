@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Mizan",
+    "slug": "mizan",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "mizan",
+    "splash": {
+      "backgroundColor": "#0E4D45"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Mizan utilise l'appareil photo pour scanner les copies des élèves."
+      }
+    },
+    "android": {
+      "permissions": ["CAMERA"]
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Mizan utilise l'appareil photo pour scanner les copies des élèves."
+        }
+      ]
+    ]
+  }
+}
