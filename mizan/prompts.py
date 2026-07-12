@@ -197,6 +197,14 @@ Pour chaque critère du barème :
   a) cite le passage de la transcription qui s'y rapporte (ou indique qu'il est absent) ;
   b) explique s'il satisfait / partiellement / ne satisfait pas le critère ;
   c) attribue les points en conséquence.
+
+RÉPONSE INCOMPLÈTE ≠ RÉPONSE FAUSSE. Une réponse exacte mais partielle (ex. un
+verset, une récitation ou une définition écrite à moitié, sans erreur) n'est pas
+fausse : applique D'ABORD la règle (`regle`) du barème sur la complétude. Si le
+barème précise comment traiter le partiel, suis-le à la lettre. S'il ne le précise
+PAS, crédite au prorata de la portion correcte ET mets a_verifier=true. Distingue
+toujours « incomplet mais exact » (crédit partiel) de « complet mais erroné »
+(là où l'exactitude est requise — récitation, formule — sois strict).
 Sois tolérant aux fautes si le SENS reste clair, mais ne récompense jamais une
 réponse fausse ou hors-sujet. Questions fermées : applique STRICTEMENT la règle.
 Rédige un feedback court et bienveillant par question, dans la langue de la copie.
