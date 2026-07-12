@@ -16,3 +16,7 @@ secrets/
 data/copies/*
 !data/copies/.gitkeep
 .DS_Store
+
+# Données utilisateur (devoirs/copies enregistrés)
+data/devoirs/
+data/copies/

@@ -20,6 +20,8 @@ from pydantic import BaseModel, ValidationError
 from mizan import __version__, config, correcteur
 from mizan.schemas import Reference
 
+from . import store
+
 app = FastAPI(title="Mizan API", version=__version__)
 
 _MEDIA_TYPES = {
@@ -187,6 +189,36 @@ async def construire_reference(
             matiere=matiere, niveau=niveau, langue=langue, devoir_id=devoir_id,
         )
     )
+
+
+@app.get("/devoirs")
+def lister_devoirs() -> list[dict]:
+    """Résumé des devoirs enregistrés (partagé web + mobile)."""
+    return store.lister()
+
+
+@app.get("/devoirs/{devoir_id}")
+def obtenir_devoir(devoir_id: str) -> dict:
+    ref = store.charger(devoir_id)
+    if ref is None:
+        raise HTTPException(404, "Devoir introuvable.")
+    return ref
+
+
+@app.post("/devoirs")
+def enregistrer_devoir(reference: dict) -> dict:
+    """Enregistre (ou met à jour) un devoir. Le corps est une référence."""
+    try:
+        Reference.model_validate(reference)
+    except ValidationError as e:
+        raise HTTPException(422, f"Référence non conforme : {e}") from e
+    devoir_id = store.enregistrer(reference)
+    return {"devoir_id": devoir_id, "ok": True}
+
+
+@app.delete("/devoirs/{devoir_id}")
+def supprimer_devoir(devoir_id: str) -> dict:
+    return {"supprime": store.supprimer(devoir_id)}
 
 
 class NoterPayload(BaseModel):
