@@ -39,6 +39,9 @@ export interface QuestionCorrigee {
   note_max: number;
   criteres: CritereEvalue[];
   feedback: string;
+  confiance?: number;
+  a_verifier?: boolean;
+  raison_doute?: string;
 }
 export interface Correction {
   copie_id: string;
