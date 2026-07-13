@@ -65,6 +65,28 @@ export async function listerDevoirs(): Promise<DevoirResume[]> {
   return jsonOrThrow(await fetch(`${API_BASE}/devoirs`));
 }
 
+export interface Lacune {
+  sujet: string;
+  questions: number[];
+  taux_echec: number;
+  explication: string;
+}
+export interface QCM {
+  question: string;
+  options: string[];
+  reponse: string;
+  cible: string;
+}
+export interface AnalyseResult {
+  nb_copies: number;
+  stats: { numero: number; enonce: string; taux_reussite: number; taux_echec: number; nb_eleves: number }[];
+  analyse: { synthese: string; lacunes: Lacune[]; qcm: QCM[]; astuces: string[] };
+}
+
+export async function analyserDevoir(devoirId: string): Promise<AnalyseResult> {
+  return jsonOrThrow(await fetch(`${API_BASE}/devoirs/${devoirId}/analyse`));
+}
+
 export async function construireReference(docs: {
   devoir: ImagePage[];
   bareme: ImagePage[];

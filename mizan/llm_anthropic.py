@@ -17,10 +17,38 @@ import json
 import anthropic
 
 from . import config, prompts
-from .schemas import Correction, Reference, build_output_json_schema, build_reference_json_schema
+from .schemas import (
+    Correction,
+    Reference,
+    build_analyse_json_schema,
+    build_output_json_schema,
+    build_reference_json_schema,
+)
 
 _OUTPUT_SCHEMA = build_output_json_schema()
 _REFERENCE_SCHEMA = build_reference_json_schema()
+_ANALYSE_SCHEMA = build_analyse_json_schema()
+
+
+def analyser_lacunes(reference: dict, stats: list[dict], nb_copies: int) -> dict:
+    """Analyse les lacunes de la classe + propose QCM et astuces (Claude)."""
+    user_text = prompts.USER_ANALYSE.format(
+        reference_json=prompts.reference_pour_prompt(reference, avec_corrige=True),
+        nb_copies=nb_copies,
+        stats_json=json.dumps(stats, ensure_ascii=False, indent=2),
+        schema="(fourni par le format de sortie)",
+    )
+    response = _client().messages.create(
+        model=config.MODEL,
+        max_tokens=config.MAX_TOKENS,
+        system=prompts.SYSTEM_ANALYSE,
+        output_config={
+            "effort": config.EFFORT,
+            "format": {"type": "json_schema", "schema": _ANALYSE_SCHEMA},
+        },
+        messages=[{"role": "user", "content": user_text}],
+    )
+    return json.loads(_texte_reponse(response))
 
 
 def _client() -> anthropic.Anthropic:

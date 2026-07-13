@@ -21,10 +21,38 @@ import httpx
 from openai import OpenAI
 
 from . import config, prompts
-from .schemas import Correction, Reference, build_output_json_schema, build_reference_json_schema
+from .schemas import (
+    Correction,
+    Reference,
+    build_analyse_json_schema,
+    build_output_json_schema,
+    build_reference_json_schema,
+)
 
 _OUTPUT_SCHEMA = build_output_json_schema()
 _REFERENCE_SCHEMA = build_reference_json_schema()
+_ANALYSE_SCHEMA = build_analyse_json_schema()
+
+
+def analyser_lacunes(reference: dict, stats: list[dict], nb_copies: int) -> dict:
+    """Analyse les lacunes de la classe + propose QCM et astuces (Llama)."""
+    user_text = prompts.USER_ANALYSE.format(
+        reference_json=prompts.reference_pour_prompt(reference, avec_corrige=True),
+        nb_copies=nb_copies,
+        stats_json=json.dumps(stats, ensure_ascii=False, indent=2),
+        schema=json.dumps(_ANALYSE_SCHEMA, ensure_ascii=False),
+    )
+    resp = _client().chat.completions.create(
+        model=config.ESPRIT_TEXT_MODEL,
+        max_tokens=config.MAX_TOKENS,
+        temperature=0.2,
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": prompts.SYSTEM_ANALYSE},
+            {"role": "user", "content": user_text},
+        ],
+    )
+    return _extract_json(resp.choices[0].message.content or "")
 
 
 def _client() -> OpenAI:

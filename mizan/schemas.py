@@ -95,6 +95,43 @@ class Correction(BaseModel):
 # --------------------------------------------------------------------------- #
 
 
+def build_analyse_json_schema() -> dict:
+    """JSON Schema de l'analyse de classe (lacunes + QCM + astuces)."""
+    lacune = {
+        "type": "object",
+        "properties": {
+            "sujet": {"type": "string"},
+            "questions": {"type": "array", "items": {"type": "integer"}},
+            "taux_echec": {"type": "number"},
+            "explication": {"type": "string"},
+        },
+        "required": ["sujet", "questions", "taux_echec", "explication"],
+        "additionalProperties": False,
+    }
+    qcm = {
+        "type": "object",
+        "properties": {
+            "question": {"type": "string"},
+            "options": {"type": "array", "items": {"type": "string"}},
+            "reponse": {"type": "string"},
+            "cible": {"type": "string"},
+        },
+        "required": ["question", "options", "reponse", "cible"],
+        "additionalProperties": False,
+    }
+    return {
+        "type": "object",
+        "properties": {
+            "synthese": {"type": "string"},
+            "lacunes": {"type": "array", "items": lacune},
+            "qcm": {"type": "array", "items": qcm},
+            "astuces": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["synthese", "lacunes", "qcm", "astuces"],
+        "additionalProperties": False,
+    }
+
+
 def build_reference_json_schema() -> dict:
     """JSON Schema de la référence (barème) — pour guider la construction LLM."""
     critere = {

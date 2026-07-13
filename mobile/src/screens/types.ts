@@ -7,4 +7,5 @@ export type RootStackParamList = {
   Scan: { devoirId?: string } | undefined;
   Resultat: { correction: Correction; eleve: string; devoirId: string; classe: string };
   Exercice: undefined;
+  Analyse: { devoirId: string; matiere: string };
 };

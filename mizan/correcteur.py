@@ -22,6 +22,7 @@ transcrire_copie = _impl.transcrire_copie
 noter_transcription = _impl.noter_transcription
 construire_reference = _impl.construire_reference
 assistant_libre = _impl.assistant_libre
+analyser_lacunes = _impl.analyser_lacunes
 
 __all__ = [
     "corriger_copie",
@@ -29,4 +30,5 @@ __all__ = [
     "noter_transcription",
     "construire_reference",
     "assistant_libre",
+    "analyser_lacunes",
 ]

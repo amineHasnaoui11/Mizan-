@@ -8,6 +8,7 @@ import { NouveauDevoirScreen } from "./src/screens/NouveauDevoirScreen";
 import { ScanScreen } from "./src/screens/ScanScreen";
 import { ResultatScreen } from "./src/screens/ResultatScreen";
 import { ExerciceScreen } from "./src/screens/ExerciceScreen";
+import { AnalyseScreen } from "./src/screens/AnalyseScreen";
 import type { RootStackParamList } from "./src/screens/types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -29,6 +30,7 @@ export default function App() {
         <Stack.Screen name="NouveauDevoir" component={NouveauDevoirScreen} options={{ title: "Nouveau devoir" }} />
         <Stack.Screen name="Scan" component={ScanScreen} options={{ title: "Corriger une copie" }} />
         <Stack.Screen name="Exercice" component={ExerciceScreen} options={{ title: "Corriger un exercice" }} />
+        <Stack.Screen name="Analyse" component={AnalyseScreen} options={{ title: "Analyse de la classe" }} />
         <Stack.Screen name="Resultat" component={ResultatScreen} options={{ title: "Résultat" }} />
       </Stack.Navigator>
     </NavigationContainer>

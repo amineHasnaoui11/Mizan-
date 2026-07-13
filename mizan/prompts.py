@@ -98,6 +98,41 @@ Renvoie le JSON : {{"copie_id": ..., "langue_detectee": "fr|ar|mixte",
 """
 
 # --------------------------------------------------------------------------- #
+# Analyse de classe — lacunes récurrentes + QCM et astuces de remédiation
+# --------------------------------------------------------------------------- #
+
+SYSTEM_ANALYSE = """\
+Tu es un conseiller pédagogique. À partir du barème d'un devoir et des
+STATISTIQUES de réussite par question (calculées sur les copies de la classe),
+tu identifies les LACUNES récurrentes — les notions où la classe a le plus
+échoué — et tu proposes une remédiation.
+
+Produis :
+- synthese : 2-3 phrases sur le niveau global et les difficultés majeures.
+- lacunes : les notions les moins réussies (sujet, questions concernées,
+  taux_echec en %, explication de la difficulté probable). Classe de la plus
+  critique à la moins critique.
+- qcm : 3 à 5 questions à choix multiple CIBLÉES sur ces lacunes, pour faire
+  réviser les élèves (question, 3-4 options, la bonne réponse, la lacune ciblée).
+- astuces : conseils concrets de remédiation pour l'enseignant (comment
+  réexpliquer, quelle activité proposer).
+
+Écris dans la langue du devoir. Réponds UNIQUEMENT en JSON conforme au schéma.
+"""
+
+USER_ANALYSE = """\
+Barème du devoir :
+{reference_json}
+
+Statistiques de réussite par question (sur {nb_copies} copies) :
+{stats_json}
+
+Analyse les lacunes de la classe et propose la remédiation. Réponds en JSON
+conforme à ce schéma :
+{schema}
+"""
+
+# --------------------------------------------------------------------------- #
 # Assistant libre — scanner un exercice, obtenir un corrigé (sans devoir/barème)
 # --------------------------------------------------------------------------- #
 

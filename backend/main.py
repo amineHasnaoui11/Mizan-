@@ -504,6 +504,54 @@ def supprimer_devoir(devoir_id: str) -> dict:
     return {"supprime": store.supprimer(devoir_id)}
 
 
+def _stats_devoir(reference: dict, copies: list[dict]) -> list[dict]:
+    """Taux de réussite/échec par question, agrégés sur les copies de la classe."""
+    enonces = {q.get("numero"): q.get("enonce", "") for q in reference.get("questions", [])}
+    agg: dict = {}
+    for c in copies:
+        for q in c.get("correction", {}).get("questions", []):
+            nm = q.get("note_max") or 0
+            if nm <= 0:
+                continue
+            ratio = (q.get("note") or 0) / nm
+            a = agg.setdefault(
+                q.get("numero"),
+                {"numero": q.get("numero"), "enonce": enonces.get(q.get("numero"), ""), "somme": 0.0, "nb": 0, "echecs": 0},
+            )
+            a["somme"] += ratio
+            a["nb"] += 1
+            if ratio < 0.5:
+                a["echecs"] += 1
+    stats = []
+    for n in sorted(agg, key=lambda x: (x is None, x)):
+        a = agg[n]
+        stats.append(
+            {
+                "numero": n,
+                "enonce": a["enonce"],
+                "taux_reussite": round(a["somme"] / a["nb"] * 100),
+                "taux_echec": round(a["echecs"] / a["nb"] * 100),
+                "nb_eleves": a["nb"],
+            }
+        )
+    return stats
+
+
+@app.get("/devoirs/{devoir_id}/analyse")
+def analyser_devoir(devoir_id: str) -> dict:
+    """Dashboard prof : lacunes de la classe + QCM et astuces de remédiation."""
+    ref = store.charger(devoir_id)
+    if ref is None:
+        raise HTTPException(404, "Devoir introuvable.")
+    copies = [store.charger_copie(r["jeton"]) for r in store.lister_copies(devoir_id)]
+    copies = [c for c in copies if c]
+    if not copies:
+        raise HTTPException(400, "Aucune copie corrigée pour ce devoir. Corrige des copies d'abord.")
+    stats = _stats_devoir(ref, copies)
+    analyse = _handle_anthropic_errors(lambda: correcteur.analyser_lacunes(ref, stats, len(copies)))
+    return {"nb_copies": len(copies), "stats": stats, "analyse": analyse}
+
+
 class NoterPayload(BaseModel):
     reference: dict
     copie_id: str

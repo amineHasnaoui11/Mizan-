@@ -45,15 +45,20 @@ export function DevoirsScreen({ navigation }: Props) {
 
         <View style={{ marginTop: 16, gap: 10 }}>
           {devoirs.map((d) => (
-            <TouchableOpacity key={d.devoir_id} onPress={() => navigation.navigate("Scan", { devoirId: d.devoir_id })}>
-              <Card>
-                <Text style={styles.dTitre}>{d.matiere || d.devoir_id}</Text>
-                <Text style={styles.dSub}>
-                  {d.niveau ? `${d.niveau} · ` : ""}{d.nb_questions} questions · {d.note_max_devoir} pts
-                </Text>
-                <Text style={styles.dAction}>Corriger une copie →</Text>
-              </Card>
-            </TouchableOpacity>
+            <Card key={d.devoir_id}>
+              <Text style={styles.dTitre}>{d.matiere || d.devoir_id}</Text>
+              <Text style={styles.dSub}>
+                {d.niveau ? `${d.niveau} · ` : ""}{d.nb_questions} questions · {d.note_max_devoir} pts
+              </Text>
+              <View style={styles.actions}>
+                <TouchableOpacity onPress={() => navigation.navigate("Scan", { devoirId: d.devoir_id })}>
+                  <Text style={styles.dAction}>📷 Corriger une copie</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.navigate("Analyse", { devoirId: d.devoir_id, matiere: d.matiere || d.devoir_id })}>
+                  <Text style={styles.dAction}>📊 Analyse de la classe</Text>
+                </TouchableOpacity>
+              </View>
+            </Card>
           ))}
         </View>
       </ScrollView>
@@ -69,5 +74,6 @@ const styles = StyleSheet.create({
   emptySub: { color: colors.muted, fontSize: 13, marginTop: 4 },
   dTitre: { fontSize: 16, fontWeight: "700", color: colors.ink },
   dSub: { fontSize: 13, color: colors.muted, marginTop: 2 },
-  dAction: { fontSize: 13, color: colors.accent, marginTop: 8, fontWeight: "600" },
+  actions: { flexDirection: "row", justifyContent: "space-between", marginTop: 12, flexWrap: "wrap", gap: 8 },
+  dAction: { fontSize: 13, color: colors.accent, fontWeight: "600" },
 });
