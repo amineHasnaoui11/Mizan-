@@ -3,6 +3,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { StatusBar } from "expo-status-bar";
 import { colors } from "./src/theme";
 import { AccueilScreen } from "./src/screens/AccueilScreen";
+import { DevoirsScreen } from "./src/screens/DevoirsScreen";
+import { NouveauDevoirScreen } from "./src/screens/NouveauDevoirScreen";
 import { ScanScreen } from "./src/screens/ScanScreen";
 import { ResultatScreen } from "./src/screens/ResultatScreen";
 import { ExerciceScreen } from "./src/screens/ExerciceScreen";
@@ -23,7 +25,9 @@ export default function App() {
         }}
       >
         <Stack.Screen name="Accueil" component={AccueilScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Scan" component={ScanScreen} options={{ title: "Scanner une copie" }} />
+        <Stack.Screen name="Devoirs" component={DevoirsScreen} options={{ title: "Mes devoirs" }} />
+        <Stack.Screen name="NouveauDevoir" component={NouveauDevoirScreen} options={{ title: "Nouveau devoir" }} />
+        <Stack.Screen name="Scan" component={ScanScreen} options={{ title: "Corriger une copie" }} />
         <Stack.Screen name="Exercice" component={ExerciceScreen} options={{ title: "Corriger un exercice" }} />
         <Stack.Screen name="Resultat" component={ResultatScreen} options={{ title: "Résultat" }} />
       </Stack.Navigator>

@@ -2,7 +2,9 @@ import type { Correction } from "../api";
 
 export type RootStackParamList = {
   Accueil: undefined;
-  Scan: undefined;
+  Devoirs: undefined;
+  NouveauDevoir: undefined;
+  Scan: { devoirId?: string } | undefined;
   Resultat: { correction: Correction; eleve: string };
   Exercice: undefined;
 };

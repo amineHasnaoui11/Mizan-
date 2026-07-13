@@ -65,6 +65,34 @@ export async function listerDevoirs(): Promise<DevoirResume[]> {
   return jsonOrThrow(await fetch(`${API_BASE}/devoirs`));
 }
 
+export async function construireReference(docs: {
+  devoir: ImagePage[];
+  bareme: ImagePage[];
+  corrige: ImagePage[];
+  matiere?: string;
+  niveau?: string;
+}): Promise<Reference> {
+  const fd = new FormData();
+  docs.devoir.forEach((p) => fd.append("devoir", p as unknown as Blob));
+  docs.bareme.forEach((p) => fd.append("bareme", p as unknown as Blob));
+  docs.corrige.forEach((p) => fd.append("corrige", p as unknown as Blob));
+  fd.append("matiere", docs.matiere ?? "");
+  fd.append("niveau", docs.niveau ?? "");
+  fd.append("langue", "mixte");
+  fd.append("devoir_id", "");
+  return jsonOrThrow(await fetch(`${API_BASE}/construire-reference`, { method: "POST", body: fd }));
+}
+
+export async function enregistrerDevoir(reference: Reference): Promise<{ devoir_id: string }> {
+  return jsonOrThrow(
+    await fetch(`${API_BASE}/devoirs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(reference),
+    }),
+  );
+}
+
 export async function obtenirDevoir(id: string): Promise<Reference> {
   return jsonOrThrow(await fetch(`${API_BASE}/devoirs/${id}`));
 }

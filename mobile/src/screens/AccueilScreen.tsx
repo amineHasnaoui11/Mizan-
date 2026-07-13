@@ -17,14 +17,14 @@ export function AccueilScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.cta}>
-          <Button title="📷 Scanner une copie (noter)" onPress={() => navigation.navigate("Scan")} />
+          <Button title="📚 Mes devoirs" onPress={() => navigation.navigate("Devoirs")} />
           <Button
-            title="🧠 Corriger un exercice (libre)"
+            title="🧠 Corriger un exercice"
             variant="outline"
             onPress={() => navigation.navigate("Exercice")}
           />
           <Text style={styles.hint}>
-            « Noter » = contre un devoir enregistré. « Libre » = corrigé direct, sans devoir.
+            Devoirs : crée un barème puis note les copies. Exercice : un corrigé direct, sans devoir.
           </Text>
         </View>
       </View>

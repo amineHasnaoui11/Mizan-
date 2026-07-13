@@ -25,9 +25,9 @@ import type { RootStackParamList } from "./types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Scan">;
 
-export function ScanScreen({ navigation }: Props) {
+export function ScanScreen({ navigation, route }: Props) {
   const [devoirs, setDevoirs] = useState<DevoirResume[]>([]);
-  const [devoirId, setDevoirId] = useState<string>("");
+  const [devoirId, setDevoirId] = useState<string>(route.params?.devoirId ?? "");
   const [eleve, setEleve] = useState("");
   const [pages, setPages] = useState<ImagePage[]>([]);
   const [statut, setStatut] = useState<string | null>(null);
@@ -37,9 +37,10 @@ export function ScanScreen({ navigation }: Props) {
     listerDevoirs()
       .then((d) => {
         setDevoirs(d);
-        if (d[0]) setDevoirId(d[0].devoir_id);
+        if (!devoirId && d[0]) setDevoirId(d[0].devoir_id);
       })
       .catch((e) => setErreur(`Impossible de charger les devoirs : ${e.message}`));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function ajouterPage() {
