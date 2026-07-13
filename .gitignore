@@ -20,3 +20,5 @@ data/copies/*
 # Données utilisateur (devoirs/copies enregistrés)
 data/devoirs/
 data/copies/
+data/eleves/
+data/sessions.json

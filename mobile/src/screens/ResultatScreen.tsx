@@ -4,6 +4,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, radius, couleurNote } from "../theme";
 import { Button, Card, Badge } from "../components/UI";
 import { enregistrerCopie, type Correction } from "../api";
+import { API_BASE } from "../config";
 import type { RootStackParamList } from "./types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Resultat">;
@@ -12,7 +13,8 @@ export function ResultatScreen({ route, navigation }: Props) {
   const [correction, setCorrection] = useState<Correction>(route.params.correction);
   const [statut, setStatut] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
-  const [lien, setLien] = useState<string | null>(null);
+  const [enregistre, setEnregistre] = useState(false);
+  const portailClasse = `${API_BASE}/portail?classe=${encodeURIComponent(route.params.classe)}`;
   const total = correction.questions.reduce((s, q) => s + (q.note || 0), 0);
   const totalMax = correction.questions.reduce((s, q) => s + (q.note_max || 0), 0);
   const aVerifier = correction.questions.filter((q) => q.a_verifier);
@@ -30,19 +32,24 @@ export function ResultatScreen({ route, navigation }: Props) {
     setStatut(true);
     try {
       const finale: Correction = { ...correction, note_globale: Math.round(total * 100) / 100 };
-      const { lien: url } = await enregistrerCopie({
+      await enregistrerCopie({
         devoir_id: route.params.devoirId,
         eleve: route.params.eleve,
         classe: route.params.classe,
         correction: finale,
       });
-      setLien(url);
-      await Share.share({ message: `Copie corrigée de ${route.params.eleve} : ${url}` });
+      setEnregistre(true);
     } catch (e) {
       setErreur(e instanceof Error ? e.message : String(e));
     } finally {
       setStatut(false);
     }
+  }
+
+  function partagerClasse() {
+    Share.share({
+      message: `Consulte tes notes sur Mizan (classe ${route.params.classe}) : ${portailClasse}`,
+    });
   }
 
   return (
@@ -94,18 +101,21 @@ export function ResultatScreen({ route, navigation }: Props) {
 
         {erreur && <Text style={styles.erreur}>{erreur}</Text>}
 
-        {lien ? (
+        {enregistre ? (
           <Card style={{ marginTop: 20 }}>
-            <Text style={styles.okTitre}>✓ Copie validée et partagée</Text>
-            <Text style={styles.lien}>{lien}</Text>
+            <Text style={styles.okTitre}>✓ Note enregistrée</Text>
+            <Text style={styles.muted}>
+              Dans l'espace de la classe {route.params.classe || "—"}. {route.params.eleve} la verra en
+              se connectant à Mizan.
+            </Text>
             <View style={{ marginTop: 12, gap: 10 }}>
-              <Button title="🔗 Repartager le lien" variant="outline" onPress={() => Share.share({ message: lien })} />
+              <Button title="🔗 Partager l'accès de la classe" variant="outline" onPress={partagerClasse} />
               <Button title="Corriger une autre copie" onPress={() => navigation.navigate("Scan", {})} />
             </View>
           </Card>
         ) : (
           <View style={{ marginTop: 20, gap: 10 }}>
-            <Button title="✓ Valider et partager à l'élève" onPress={valider} loading={statut} />
+            <Button title="✓ Valider la note" onPress={valider} loading={statut} />
             <Button title="Corriger une autre copie" variant="outline" onPress={() => navigation.navigate("Scan", {})} />
           </View>
         )}

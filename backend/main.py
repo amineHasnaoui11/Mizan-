@@ -16,14 +16,14 @@ import json
 
 import html as _html
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, ValidationError
 
 from mizan import __version__, config, correcteur
 from mizan.schemas import Reference
 
-from . import store
+from . import auth, store
 
 app = FastAPI(title="Mizan API", version=__version__)
 
@@ -270,6 +270,98 @@ font-family:-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}}
 </div></body></html>"""
 
 
+_PORTAIL_HTML = """<!doctype html><html lang="fr"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mizan — mes notes</title>
+<style>
+:root{--ink:#0E4D45;--accent:#E07A3F;--paper:#FAF7F2;--line:#E9E2D8;--muted:#7C8B86}
+*{box-sizing:border-box} body{margin:0;background:var(--paper);color:var(--ink);
+font-family:-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:520px;margin:0 auto;padding:22px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:22px;margin-bottom:18px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px}
+label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+input{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;font-size:15px}
+button{width:100%;padding:13px;border:0;border-radius:12px;background:var(--accent);color:#fff;
+font-size:15px;font-weight:600;margin-top:14px;cursor:pointer}
+.link{background:none;color:var(--muted);font-weight:400;margin-top:8px}
+.err{color:#C0442E;font-size:14px;margin-top:10px}
+.copie{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);
+border-radius:12px;padding:12px 14px;margin-top:10px;text-decoration:none;color:var(--ink)}
+.note{font-family:ui-monospace,monospace;font-weight:700}
+.small{color:var(--muted);font-size:13px}
+h2{font-size:18px;margin:0 0 4px}
+.hidden{display:none}
+</style></head><body><div class="wrap">
+<div class="brand">⚖️ Mizan</div>
+
+<div id="auth" class="card">
+  <h2 id="titre">Se connecter</h2>
+  <div class="small">Accède à tes notes.</div>
+  <label>Nom et prénom</label><input id="name" autocomplete="name">
+  <label>Classe</label><input id="classe" placeholder="ex : 6ème B">
+  <label>Mot de passe</label><input id="password" type="password" autocomplete="current-password">
+  <div id="err" class="err"></div>
+  <button id="go">Se connecter</button>
+  <button id="toggle" class="link">Pas encore de compte ? Créer un compte</button>
+</div>
+
+<div id="board" class="hidden">
+  <div class="card">
+    <h2 id="hello"></h2>
+    <div class="small" id="sub"></div>
+    <button id="logout" class="link" style="background:none;color:var(--accent);text-align:left;padding:0;margin-top:10px">Se déconnecter</button>
+  </div>
+  <div id="copies"></div>
+  <div id="vide" class="small hidden">Aucune copie pour l'instant. Reviens après la correction.</div>
+</div>
+
+<script>
+var API="";var mode="login";var TK="mizan.eleve.token";
+var $=function(id){return document.getElementById(id)};
+$("classe").value="__CLASSE__";
+function setMode(m){mode=m;
+  $("titre").textContent=m==="login"?"Se connecter":"Créer mon compte";
+  $("go").textContent=m==="login"?"Se connecter":"Créer mon compte";
+  $("toggle").textContent=m==="login"?"Pas encore de compte ? Créer un compte":"J'ai déjà un compte — se connecter";
+  $("err").textContent="";}
+$("toggle").onclick=function(){setMode(mode==="login"?"register":"login")};
+$("go").onclick=async function(){
+  $("err").textContent="";
+  var body={name:$("name").value,classe:$("classe").value,password:$("password").value};
+  try{
+    var r=await fetch(API+"/eleves/"+(mode==="login"?"login":"register"),
+      {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    if(!r.ok){$("err").textContent=(await r.json()).detail||"Erreur";return;}
+    var d=await r.json();localStorage.setItem(TK,d.token);show(d);
+  }catch(e){$("err").textContent="Réseau indisponible.";}
+};
+$("logout").onclick=function(){localStorage.removeItem(TK);location.reload();};
+function show(d){$("auth").classList.add("hidden");$("board").classList.remove("hidden");
+  $("hello").textContent="Bonjour "+d.name;$("sub").textContent=d.classe;loadCopies();}
+async function loadCopies(){
+  var t=localStorage.getItem(TK);
+  var r=await fetch(API+"/eleves/copies",{headers:{Authorization:"Bearer "+t}});
+  if(!r.ok){localStorage.removeItem(TK);location.reload();return;}
+  var list=await r.json();var box=$("copies");box.innerHTML="";
+  if(!list.length){$("vide").classList.remove("hidden");return;}
+  list.forEach(function(c){
+    var a=document.createElement("a");a.className="copie";a.href=c.lien;
+    a.innerHTML='<span>'+(c.devoir_id||"Devoir")+'</span><span class="note">'+c.note_globale+' / '+c.note_max+'</span>';
+    box.appendChild(a);
+  });
+}
+(function(){var t=localStorage.getItem(TK);if(t){
+  fetch(API+"/eleves/copies",{headers:{Authorization:"Bearer "+t}}).then(function(r){
+    if(r.ok){$("auth").classList.add("hidden");$("board").classList.remove("hidden");loadCopies();}
+  });}})();
+</script></div></body></html>"""
+
+
+def _page_portail_html(classe: str) -> str:
+    return _PORTAIL_HTML.replace("__CLASSE__", _html.escape(classe or "", quote=True))
+
+
 class CopiePayload(BaseModel):
     devoir_id: str = ""
     eleve: str = ""
@@ -306,6 +398,69 @@ def page_partage(jeton: str) -> str:
     if c is None:
         raise HTTPException(404, "Lien invalide ou expiré.")
     return _page_eleve_html(c)
+
+
+# --------------------------------------------------------------------------- #
+# Comptes élèves — un seul lien de classe, chaque élève voit SES copies
+# --------------------------------------------------------------------------- #
+
+
+class ElevePayload(BaseModel):
+    name: str
+    classe: str
+    password: str
+
+
+@app.post("/eleves/register")
+def eleve_register(p: ElevePayload) -> dict:
+    try:
+        eleve = auth.creer_eleve(p.name, p.classe, p.password)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    return {"token": auth.creer_session(eleve["cle"]), "name": eleve["name"], "classe": eleve["classe"]}
+
+
+@app.post("/eleves/login")
+def eleve_login(p: ElevePayload) -> dict:
+    eleve = auth.verifier_eleve(p.name, p.classe, p.password)
+    if eleve is None:
+        raise HTTPException(401, "Nom, classe ou mot de passe incorrect.")
+    return {"token": auth.creer_session(eleve["cle"]), "name": eleve["name"], "classe": eleve["classe"]}
+
+
+def _eleve_courant(authorization: str | None) -> dict:
+    jeton = (authorization or "").removeprefix("Bearer ").strip()
+    eleve = auth.eleve_de_session(jeton)
+    if eleve is None:
+        raise HTTPException(401, "Session invalide. Reconnecte-toi.")
+    return eleve
+
+
+@app.get("/eleves/copies")
+def eleve_copies(request: Request, authorization: str | None = Header(None)) -> list[dict]:
+    """Les copies de l'élève connecté (nom + classe correspondants)."""
+    eleve = _eleve_courant(authorization)
+    base = str(request.base_url).rstrip("/")
+    out = []
+    for c in store.lister_copies():
+        full = store.charger_copie(c["jeton"])
+        if full and auth.meme_eleve(full, eleve):
+            out.append(
+                {
+                    "jeton": c["jeton"],
+                    "devoir_id": c.get("devoir_id", ""),
+                    "note_globale": c.get("note_globale"),
+                    "note_max": c.get("note_max"),
+                    "lien": f"{base}/partage/{c['jeton']}",
+                }
+            )
+    return out
+
+
+@app.get("/portail", response_class=HTMLResponse)
+def portail(classe: str = "") -> str:
+    """Portail élève : login/inscription puis liste de ses copies."""
+    return _page_portail_html(classe)
 
 
 @app.post("/assistant")
