@@ -29,6 +29,7 @@ export function ScanScreen({ navigation, route }: Props) {
   const [devoirs, setDevoirs] = useState<DevoirResume[]>([]);
   const [devoirId, setDevoirId] = useState<string>(route.params?.devoirId ?? "");
   const [eleve, setEleve] = useState("");
+  const [classe, setClasse] = useState("");
   const [pages, setPages] = useState<ImagePage[]>([]);
   const [statut, setStatut] = useState<string | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -69,7 +70,12 @@ export function ScanScreen({ navigation, route }: Props) {
       setStatut("Notation en cours…");
       const correction = await noter(ref, copieId, t.transcriptions);
       setStatut(null);
-      navigation.navigate("Resultat", { correction, eleve: eleve.trim() || copieId });
+      navigation.navigate("Resultat", {
+        correction,
+        eleve: eleve.trim() || copieId,
+        devoirId,
+        classe: classe.trim(),
+      });
     } catch (e) {
       setStatut(null);
       setErreur(e instanceof Error ? e.message : String(e));
@@ -103,6 +109,14 @@ export function ScanScreen({ navigation, route }: Props) {
             value={eleve}
             onChangeText={setEleve}
             placeholder="Ex : Aziz Abdelli"
+            placeholderTextColor={colors.muted}
+            style={styles.input}
+          />
+          <Text style={[styles.label, { marginTop: 12 }]}>Classe</Text>
+          <TextInput
+            value={classe}
+            onChangeText={setClasse}
+            placeholder="Ex : 6ème B"
             placeholderTextColor={colors.muted}
             style={styles.input}
           />

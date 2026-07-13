@@ -14,7 +14,10 @@ from __future__ import annotations
 
 import json
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+import html as _html
+
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, ValidationError
 
 from mizan import __version__, config, correcteur
@@ -189,6 +192,120 @@ async def construire_reference(
             matiere=matiere, niveau=niveau, langue=langue, devoir_id=devoir_id,
         )
     )
+
+
+def _couleur_note(obtenus, maxi) -> str:
+    try:
+        r = float(obtenus) / float(maxi)
+    except (TypeError, ZeroDivisionError, ValueError):
+        return "#7C8B86"
+    if r >= 0.999:
+        return "#2E7D32"
+    if r <= 0.001:
+        return "#C0442E"
+    return "#E8A13A"
+
+
+def _page_eleve_html(c: dict) -> str:
+    """Page lecture seule : note + corrections. L'élève ne voit que SA copie."""
+    esc = _html.escape
+    corr = c.get("correction", {})
+    langue = corr.get("langue_detectee", "mixte")
+    direction = "rtl" if langue == "ar" else "ltr"
+    note = corr.get("note_globale", 0)
+    note_max = corr.get("note_max", 0)
+    eleve = esc(c.get("eleve", "Élève"))
+    devoir = esc(c.get("devoir_id", ""))
+
+    lignes = []
+    for q in corr.get("questions", []):
+        coul = _couleur_note(q.get("note", 0), q.get("note_max", 0))
+        trans = esc(q.get("transcription", "") or "—")
+        fb = esc(q.get("feedback", "") or "")
+        crit = "".join(
+            f'<div class="crit"><span class="pts" style="background:{_couleur_note(cr.get("points_obtenus",0), cr.get("points_max",0))}">'
+            f'{esc(str(cr.get("points_obtenus",0)))}/{esc(str(cr.get("points_max",0)))}</span> {esc(cr.get("critere",""))}</div>'
+            for cr in q.get("criteres", [])
+        )
+        lignes.append(
+            f'<div class="q"><div class="qhead"><b>Question {esc(str(q.get("numero","")))}</b>'
+            f'<span class="note" dir="ltr" style="color:{coul}">{esc(str(q.get("note",0)))} / {esc(str(q.get("note_max",0)))}</span></div>'
+            f'<div class="trans">{trans}</div>{crit}'
+            + (f'<div class="fb">💬 {fb}</div>' if fb else "")
+            + "</div>"
+        )
+
+    coul_g = _couleur_note(note, note_max)
+    fb_g = esc(corr.get("feedback_global", "") or "")
+    return f"""<!doctype html><html lang="{esc(langue)}" dir="{direction}"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ma copie — {eleve}</title>
+<style>
+:root{{--ink:#0E4D45;--accent:#E07A3F;--paper:#FAF7F2;--line:#E9E2D8;--muted:#7C8B86}}
+*{{box-sizing:border-box}} body{{margin:0;background:var(--paper);color:var(--ink);
+font-family:-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}}
+.wrap{{max-width:680px;margin:0 auto;padding:20px}}
+.head{{display:flex;align-items:center;gap:8px;margin-bottom:16px}}
+.brand{{font-weight:700;font-size:20px}}
+.card{{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px}}
+.big{{font-size:40px;font-weight:800;font-family:ui-monospace,monospace}}
+.small{{color:var(--muted);font-size:14px}}
+.q .qhead{{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}}
+.note{{font-family:ui-monospace,monospace;font-weight:700}}
+.trans{{background:var(--paper);border-radius:10px;padding:8px 10px;margin:6px 0;font-size:14px}}
+.crit{{font-size:14px;margin:4px 0}}
+.pts{{color:#fff;border-radius:999px;padding:1px 8px;font-size:12px;margin-inline-end:6px;direction:ltr;display:inline-block}}
+.big{{direction:ltr}} .note{{direction:ltr}}
+.fb{{font-style:italic;color:var(--muted);font-size:14px;margin-top:6px}}
+.foot{{text-align:center;color:var(--muted);font-size:12px;margin-top:20px}}
+</style></head><body><div class="wrap">
+<div class="head"><span>⚖️</span><span class="brand">Mizan</span></div>
+<div class="card">
+  <div class="small">{eleve}{(" · " + esc(c.get("classe",""))) if c.get("classe") else ""} · {devoir}</div>
+  <div class="big" dir="ltr" style="color:{coul_g}">{esc(str(note))} <span class="small">/ {esc(str(note_max))}</span></div>
+  {f'<div class="small" style="margin-top:6px">📝 {fb_g}</div>' if fb_g else ""}
+</div>
+{"".join(lignes)}
+<div class="foot">Corrigé validé par l'enseignant · Mizan</div>
+</div></body></html>"""
+
+
+class CopiePayload(BaseModel):
+    devoir_id: str = ""
+    eleve: str = ""
+    classe: str = ""
+    correction: dict
+
+
+@app.post("/copies")
+def enregistrer_copie(payload: CopiePayload, request: Request) -> dict:
+    """Enregistre une copie validée dans l'espace → renvoie son lien privé."""
+    jeton = store.enregistrer_copie(payload.model_dump())
+    lien = str(request.base_url).rstrip("/") + f"/partage/{jeton}"
+    return {"jeton": jeton, "lien": lien}
+
+
+@app.get("/copies")
+def lister_copies(devoir_id: str | None = None) -> list[dict]:
+    """Espace prof : liste des copies validées (filtrable par devoir)."""
+    return store.lister_copies(devoir_id)
+
+
+@app.get("/copies/{jeton}")
+def obtenir_copie(jeton: str) -> dict:
+    c = store.charger_copie(jeton)
+    if c is None:
+        raise HTTPException(404, "Copie introuvable.")
+    return c
+
+
+@app.get("/partage/{jeton}", response_class=HTMLResponse)
+def page_partage(jeton: str) -> str:
+    """Page élève (lecture seule) : l'élève ne voit QUE sa copie."""
+    c = store.charger_copie(jeton)
+    if c is None:
+        raise HTTPException(404, "Lien invalide ou expiré.")
+    return _page_eleve_html(c)
 
 
 @app.post("/assistant")

@@ -7,9 +7,11 @@ from __future__ import annotations
 
 import json
 import re
+import secrets
 from pathlib import Path
 
 _DIR = Path(__file__).resolve().parent.parent / "data" / "devoirs"
+_COPIES = Path(__file__).resolve().parent.parent / "data" / "copies"
 
 
 def _slug(texte: str) -> str:
@@ -68,3 +70,56 @@ def supprimer(devoir_id: str) -> bool:
         f.unlink()
         return True
     return False
+
+
+# --------------------------------------------------------------------------- #
+# Copies corrigées & validées — l'« espace » partagé aux élèves
+# Chaque copie a un jeton unique => lien privé (un élève ne voit que la sienne).
+# --------------------------------------------------------------------------- #
+
+
+def enregistrer_copie(copie: dict) -> str:
+    """Enregistre une copie validée et renvoie son jeton (lien privé)."""
+    _COPIES.mkdir(parents=True, exist_ok=True)
+    jeton = copie.get("jeton") or secrets.token_urlsafe(8)
+    copie["jeton"] = jeton
+    (_COPIES / f"{jeton}.json").write_text(
+        json.dumps(copie, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return jeton
+
+
+def charger_copie(jeton: str) -> dict | None:
+    # jeton = base64-url ; on refuse tout ce qui n'est pas alphanumérique/-/_
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", jeton or ""):
+        return None
+    f = _COPIES / f"{jeton}.json"
+    if not f.exists():
+        return None
+    return json.loads(f.read_text(encoding="utf-8"))
+
+
+def lister_copies(devoir_id: str | None = None) -> list[dict]:
+    """Résumé des copies (pour l'espace prof). Filtre par devoir si fourni."""
+    if not _COPIES.exists():
+        return []
+    out = []
+    for f in sorted(_COPIES.glob("*.json")):
+        try:
+            c = json.loads(f.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        if devoir_id and c.get("devoir_id") != devoir_id:
+            continue
+        corr = c.get("correction", {})
+        out.append(
+            {
+                "jeton": c.get("jeton", f.stem),
+                "devoir_id": c.get("devoir_id", ""),
+                "eleve": c.get("eleve", ""),
+                "classe": c.get("classe", ""),
+                "note_globale": corr.get("note_globale"),
+                "note_max": corr.get("note_max"),
+            }
+        )
+    return out

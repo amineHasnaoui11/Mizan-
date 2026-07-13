@@ -1,15 +1,18 @@
 import { useState } from "react";
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TextInput } from "react-native";
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TextInput, Share } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, radius, couleurNote } from "../theme";
 import { Button, Card, Badge } from "../components/UI";
-import type { Correction } from "../api";
+import { enregistrerCopie, type Correction } from "../api";
 import type { RootStackParamList } from "./types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Resultat">;
 
 export function ResultatScreen({ route, navigation }: Props) {
   const [correction, setCorrection] = useState<Correction>(route.params.correction);
+  const [statut, setStatut] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+  const [lien, setLien] = useState<string | null>(null);
   const total = correction.questions.reduce((s, q) => s + (q.note || 0), 0);
   const totalMax = correction.questions.reduce((s, q) => s + (q.note_max || 0), 0);
   const aVerifier = correction.questions.filter((q) => q.a_verifier);
@@ -20,6 +23,26 @@ export function ResultatScreen({ route, navigation }: Props) {
       ...c,
       questions: c.questions.map((q) => (q.numero === numero ? { ...q, note, a_verifier: false } : q)),
     }));
+  }
+
+  async function valider() {
+    setErreur(null);
+    setStatut(true);
+    try {
+      const finale: Correction = { ...correction, note_globale: Math.round(total * 100) / 100 };
+      const { lien: url } = await enregistrerCopie({
+        devoir_id: route.params.devoirId,
+        eleve: route.params.eleve,
+        classe: route.params.classe,
+        correction: finale,
+      });
+      setLien(url);
+      await Share.share({ message: `Copie corrigée de ${route.params.eleve} : ${url}` });
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : String(e));
+    } finally {
+      setStatut(false);
+    }
   }
 
   return (
@@ -69,10 +92,23 @@ export function ResultatScreen({ route, navigation }: Props) {
           </Card>
         ))}
 
-        <View style={{ marginTop: 20, gap: 10 }}>
-          <Button title="✓ Valider la note" onPress={() => navigation.navigate("Accueil")} />
-          <Button title="Corriger une autre copie" variant="outline" onPress={() => navigation.navigate("Scan")} />
-        </View>
+        {erreur && <Text style={styles.erreur}>{erreur}</Text>}
+
+        {lien ? (
+          <Card style={{ marginTop: 20 }}>
+            <Text style={styles.okTitre}>✓ Copie validée et partagée</Text>
+            <Text style={styles.lien}>{lien}</Text>
+            <View style={{ marginTop: 12, gap: 10 }}>
+              <Button title="🔗 Repartager le lien" variant="outline" onPress={() => Share.share({ message: lien })} />
+              <Button title="Corriger une autre copie" onPress={() => navigation.navigate("Scan", {})} />
+            </View>
+          </Card>
+        ) : (
+          <View style={{ marginTop: 20, gap: 10 }}>
+            <Button title="✓ Valider et partager à l'élève" onPress={valider} loading={statut} />
+            <Button title="Corriger une autre copie" variant="outline" onPress={() => navigation.navigate("Scan", {})} />
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -104,4 +140,7 @@ const styles = StyleSheet.create({
   trans: { marginTop: 10, color: colors.ink, fontSize: 14, backgroundColor: colors.paper, padding: 8, borderRadius: 8 },
   doute: { marginTop: 8, color: colors.scorePartial, fontSize: 14 },
   feedback: { marginTop: 8, color: colors.muted, fontSize: 14, fontStyle: "italic" },
+  erreur: { color: colors.scoreZero, marginTop: 14, fontSize: 14 },
+  okTitre: { fontSize: 16, fontWeight: "700", color: colors.scoreFull },
+  lien: { marginTop: 6, color: colors.accent, fontSize: 13 },
 });

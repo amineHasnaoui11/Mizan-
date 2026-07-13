@@ -110,6 +110,21 @@ export async function transcrire(
   return jsonOrThrow(await fetch(`${API_BASE}/transcrire`, { method: "POST", body: fd }));
 }
 
+export async function enregistrerCopie(payload: {
+  devoir_id: string;
+  eleve: string;
+  classe: string;
+  correction: Correction;
+}): Promise<{ jeton: string; lien: string }> {
+  return jsonOrThrow(
+    await fetch(`${API_BASE}/copies`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  );
+}
+
 export async function assistant(pages: ImagePage[], consigne: string): Promise<{ texte: string }> {
   const fd = new FormData();
   pages.forEach((p) => fd.append("copie", p as unknown as Blob));

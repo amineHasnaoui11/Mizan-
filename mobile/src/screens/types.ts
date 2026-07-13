@@ -5,6 +5,6 @@ export type RootStackParamList = {
   Devoirs: undefined;
   NouveauDevoir: undefined;
   Scan: { devoirId?: string } | undefined;
-  Resultat: { correction: Correction; eleve: string };
+  Resultat: { correction: Correction; eleve: string; devoirId: string; classe: string };
   Exercice: undefined;
 };
