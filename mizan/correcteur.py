@@ -12,7 +12,8 @@ from __future__ import annotations
 
 from . import config
 
-if config.PROVIDER == "esprit":
+# esprit et groq partagent le même client OpenAI-compatible (llm_esprit).
+if config.PROVIDER in ("esprit", "groq"):
     from . import llm_esprit as _impl
 else:
     from . import llm_anthropic as _impl

@@ -50,6 +50,34 @@ ESPRIT_TEXT_MODEL = os.getenv(
 # vérification (comme dans l'exemple fourni par Esprit). "false" pour désactiver.
 ESPRIT_VERIFY_TLS = os.getenv("MIZAN_ESPRIT_VERIFY_TLS", "false").lower() in ("1", "true", "yes")
 
+# --------------------------------------------------------------------------- #
+# Fournisseur Groq (public, gratuit, OpenAI-compatible) — Llama 3.3 70B.
+# Marche sur internet public (contrairement à Esprit qui exige le réseau interne),
+# donc indispensable dès qu'on héberge ou qu'on teste hors réseau Esprit.
+# --------------------------------------------------------------------------- #
+
+GROQ_BASE_URL = os.getenv("MIZAN_GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+GROQ_TEXT_MODEL = os.getenv("MIZAN_GROQ_TEXT_MODEL", "llama-3.3-70b-versatile")
+GROQ_VISION_MODEL = os.getenv(
+    "MIZAN_GROQ_VISION_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct"
+)
+
+# --------------------------------------------------------------------------- #
+# Résolution du LLM OpenAI-compatible actif (esprit OU groq).
+# llm_esprit lit ces valeurs génériques.
+# --------------------------------------------------------------------------- #
+
+if PROVIDER == "groq":
+    LLM_BASE_URL = GROQ_BASE_URL
+    LLM_TEXT_MODEL = GROQ_TEXT_MODEL
+    LLM_VISION_MODEL = GROQ_VISION_MODEL
+    LLM_VERIFY_TLS = True
+else:  # esprit (défaut OpenAI-compatible)
+    LLM_BASE_URL = ESPRIT_BASE_URL
+    LLM_TEXT_MODEL = ESPRIT_TEXT_MODEL
+    LLM_VISION_MODEL = ESPRIT_VISION_MODEL
+    LLM_VERIFY_TLS = ESPRIT_VERIFY_TLS
+
 # Moteur de lecture de la copie côté Esprit :
 #   "llava"  — VLM vision (défaut historique, faible sur arabe manuscrit)
 #   "google" — Google Cloud Vision OCR (recommandé pour le manuscrit)
@@ -76,6 +104,14 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "").strip()
 
 def require_api_key() -> str:
     """Retourne la clé API du fournisseur actif, ou lève une erreur explicite."""
+    if PROVIDER == "groq":
+        key = os.getenv("GROQ_API_KEY")
+        if not key:
+            raise RuntimeError(
+                "GROQ_API_KEY manquante. Crée une clé gratuite sur console.groq.com "
+                "et renseigne-la dans .env."
+            )
+        return key
     if PROVIDER == "esprit":
         key = os.getenv("ESPRIT_API_KEY")
         if not key:

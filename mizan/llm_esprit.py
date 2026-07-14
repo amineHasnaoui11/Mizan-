@@ -43,7 +43,7 @@ def analyser_lacunes(reference: dict, stats: list[dict], nb_copies: int) -> dict
         schema=json.dumps(_ANALYSE_SCHEMA, ensure_ascii=False),
     )
     resp = _client().chat.completions.create(
-        model=config.ESPRIT_TEXT_MODEL,
+        model=config.LLM_TEXT_MODEL,
         max_tokens=config.MAX_TOKENS,
         temperature=0.2,
         response_format={"type": "json_object"},
@@ -57,12 +57,12 @@ def analyser_lacunes(reference: dict, stats: list[dict], nb_copies: int) -> dict
 
 def _client() -> OpenAI:
     api_key = config.require_api_key()
-    if not config.ESPRIT_VERIFY_TLS:
+    if not config.LLM_VERIFY_TLS:
         warnings.filterwarnings("ignore", message="Unverified HTTPS request")
-    http_client = httpx.Client(verify=config.ESPRIT_VERIFY_TLS, timeout=180.0)
+    http_client = httpx.Client(verify=config.LLM_VERIFY_TLS, timeout=180.0)
     return OpenAI(
         api_key=api_key,
-        base_url=config.ESPRIT_BASE_URL,
+        base_url=config.LLM_BASE_URL,
         http_client=http_client,
     )
 
@@ -123,7 +123,7 @@ def assistant_libre(
         if not contenu:
             raise ValueError("Aucun texte lisible dans la feuille.")
         resp = _client().chat.completions.create(
-            model=config.ESPRIT_TEXT_MODEL,
+            model=config.LLM_TEXT_MODEL,
             max_tokens=config.MAX_TOKENS,
             temperature=0.2,
             messages=[
@@ -138,7 +138,7 @@ def assistant_libre(
     for img, mt in images:
         contenu_msg.append({"type": "image_url", "image_url": {"url": _data_uri(img, mt)}})
     resp = _client().chat.completions.create(
-        model=config.ESPRIT_VISION_MODEL,
+        model=config.LLM_VISION_MODEL,
         max_tokens=1500,
         temperature=0.2,
         messages=[{"role": "user", "content": contenu_msg}],
@@ -183,7 +183,7 @@ def construire_reference(
         schema=json.dumps(_REFERENCE_SCHEMA, ensure_ascii=False),
     )
     resp = _client().chat.completions.create(
-        model=config.ESPRIT_TEXT_MODEL,
+        model=config.LLM_TEXT_MODEL,
         max_tokens=config.MAX_TOKENS,
         temperature=0.1,
         response_format={"type": "json_object"},
@@ -225,7 +225,7 @@ def structurer_texte(reference: dict, texte_ocr: str) -> dict:
     )
     try:
         resp = _client().chat.completions.create(
-            model=config.ESPRIT_TEXT_MODEL,
+            model=config.LLM_TEXT_MODEL,
             max_tokens=config.MAX_TOKENS,
             temperature=0.0,
             response_format={"type": "json_object"},
@@ -321,7 +321,7 @@ def transcrire_copie(
             {"type": "image_url", "image_url": {"url": _data_uri(img, mt)}}
         )
     resp = _client().chat.completions.create(
-        model=config.ESPRIT_VISION_MODEL,
+        model=config.LLM_VISION_MODEL,
         max_tokens=1500,
         temperature=0.1,
         messages=[{"role": "user", "content": contenu_msg}],
@@ -369,7 +369,7 @@ def noter_transcription(
     )
 
     resp = _client().chat.completions.create(
-        model=config.ESPRIT_TEXT_MODEL,
+        model=config.LLM_TEXT_MODEL,
         max_tokens=config.MAX_TOKENS,
         temperature=0.1,
         response_format={"type": "json_object"},
