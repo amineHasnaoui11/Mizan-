@@ -12,6 +12,7 @@ from pathlib import Path
 
 _DIR = Path(__file__).resolve().parent.parent / "data" / "devoirs"
 _COPIES = Path(__file__).resolve().parent.parent / "data" / "copies"
+_ANALYSES = Path(__file__).resolve().parent.parent / "data" / "analyses"
 
 
 def _slug(texte: str) -> str:
@@ -123,3 +124,31 @@ def lister_copies(devoir_id: str | None = None) -> list[dict]:
             }
         )
     return out
+
+
+# --------------------------------------------------------------------------- #
+# Cache d'analyse (dashboard prof). L'analyse LLM est coûteuse et dépend du
+# réseau ; on la met en cache disque, clé = (devoir_id, nb_copies). En démo le
+# dashboard s'affiche ainsi instantanément et sans re-solliciter le modèle.
+# --------------------------------------------------------------------------- #
+
+
+def charger_analyse(devoir_id: str, cle: str | int) -> dict | None:
+    f = _ANALYSES / f"{_slug(devoir_id)}.json"
+    if not f.exists():
+        return None
+    try:
+        blob = json.loads(f.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+    if str(blob.get("cle")) != str(cle):
+        return None
+    return blob.get("data")
+
+
+def enregistrer_analyse(devoir_id: str, cle: str | int, data: dict) -> None:
+    _ANALYSES.mkdir(parents=True, exist_ok=True)
+    (_ANALYSES / f"{_slug(devoir_id)}.json").write_text(
+        json.dumps({"cle": str(cle), "data": data}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )

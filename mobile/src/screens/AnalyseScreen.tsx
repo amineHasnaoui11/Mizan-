@@ -41,11 +41,29 @@ export function AnalyseScreen({ route }: Props) {
   }
 
   const a = data.analyse;
+  const moyenne = data.stats.length
+    ? Math.round(data.stats.reduce((s, q) => s + q.taux_reussite, 0) / data.stats.length)
+    : 0;
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={[styles.h1, rtlText]}>{route.params.matiere}</Text>
         <Text style={[styles.muted, rtlText]}>{t("analyse_sur")} {data.nb_copies} {t("copies")}</Text>
+
+        <View style={styles.kpis}>
+          <Card style={styles.kpi}>
+            <Text style={[styles.kpiVal, { color: couleurNote(moyenne, 100) }]}>{moyenne}%</Text>
+            <Text style={styles.kpiLabel}>{t("moyenne_reussite")}</Text>
+          </Card>
+          <Card style={styles.kpi}>
+            <Text style={styles.kpiVal}>{data.nb_copies}</Text>
+            <Text style={styles.kpiLabel}>{t("copies")}</Text>
+          </Card>
+          <Card style={styles.kpi}>
+            <Text style={[styles.kpiVal, { color: colors.scoreZero }]}>{a.lacunes?.length ?? 0}</Text>
+            <Text style={styles.kpiLabel}>{t("nb_lacunes")}</Text>
+          </Card>
+        </View>
 
         {!!a.synthese && (
           <Card style={styles.card}>
@@ -122,6 +140,10 @@ const styles = StyleSheet.create({
   muted: { color: colors.muted, fontSize: 13 },
   body: { color: colors.ink, fontSize: 15, lineHeight: 22 },
   card: { marginTop: 8 },
+  kpis: { flexDirection: "row", gap: 8, marginTop: 14 },
+  kpi: { flex: 1, alignItems: "center", paddingVertical: 14 },
+  kpiVal: { fontSize: 26, fontWeight: "800", color: colors.ink, fontVariant: ["tabular-nums"] },
+  kpiLabel: { fontSize: 11, color: colors.muted, marginTop: 4, textAlign: "center" },
   erreur: { color: colors.scoreZero, fontSize: 14, textAlign: "center" },
   barRow: { flexDirection: "row", alignItems: "center", marginVertical: 5 },
   qlabel: { width: 34, fontSize: 13, fontWeight: "600", color: colors.ink },

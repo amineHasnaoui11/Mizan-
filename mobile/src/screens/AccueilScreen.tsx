@@ -1,14 +1,31 @@
+import { useState } from "react";
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors } from "../theme";
 import { Button } from "../components/UI";
 import { useLang } from "../i18n";
+import { chargerDemo } from "../api";
 import type { RootStackParamList } from "./types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Accueil">;
 
 export function AccueilScreen({ navigation }: Props) {
   const { t, lang, setLang, rtlText } = useLang();
+  const [demoEnCours, setDemoEnCours] = useState(false);
+  const [demoErreur, setDemoErreur] = useState<string | null>(null);
+
+  const ouvrirDemo = async () => {
+    setDemoErreur(null);
+    setDemoEnCours(true);
+    try {
+      const d = await chargerDemo();
+      navigation.navigate("Analyse", { devoirId: d.devoir_id, matiere: d.matiere });
+    } catch (e) {
+      setDemoErreur(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDemoEnCours(false);
+    }
+  };
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
@@ -31,6 +48,13 @@ export function AccueilScreen({ navigation }: Props) {
         <View style={styles.cta}>
           <Button title={t("home_devoirs")} onPress={() => navigation.navigate("Devoirs")} />
           <Button title={t("home_exercice")} variant="outline" onPress={() => navigation.navigate("Exercice")} />
+          <Button
+            title={demoEnCours ? t("demo_chargement") : t("home_demo")}
+            variant="outline"
+            onPress={ouvrirDemo}
+            disabled={demoEnCours}
+          />
+          {demoErreur && <Text style={[styles.erreur, rtlText]}>{demoErreur}</Text>}
           <Text style={[styles.hint, rtlText]}>{t("home_hint")}</Text>
         </View>
       </View>
@@ -53,4 +77,5 @@ const styles = StyleSheet.create({
   tagline: { fontSize: 15, color: colors.muted, marginTop: 8, textAlign: "center" },
   cta: { gap: 12 },
   hint: { color: colors.muted, fontSize: 13, textAlign: "center", marginTop: 4 },
+  erreur: { color: colors.scoreZero, fontSize: 13, textAlign: "center" },
 });

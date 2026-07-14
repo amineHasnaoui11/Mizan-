@@ -12,6 +12,8 @@ const T: Record<string, { fr: string; ar: string }> = {
     fr: "Devoirs : crée un barème puis note les copies. Exercice : un corrigé direct, sans devoir.",
     ar: "الفروض: أنشئ سلّماً ثم أصلح النسخ. تمرين: إصلاح مباشر دون فرض.",
   },
+  home_demo: { fr: "📊 Tableau de bord (démo)", ar: "📊 لوحة القيادة (تجربة)" },
+  demo_chargement: { fr: "Chargement de la démo…", ar: "جارٍ تحميل التجربة…" },
   // Titres d'écrans
   nav_devoirs: { fr: "Mes devoirs", ar: "فروضي" },
   nav_nouveau: { fr: "Nouveau devoir", ar: "فرض جديد" },
@@ -67,6 +69,8 @@ const T: Record<string, { fr: string; ar: string }> = {
   // Analyse
   analyse_sur: { fr: "Analyse sur", ar: "تحليل على" },
   copies: { fr: "copie(s)", ar: "نسخة" },
+  moyenne_reussite: { fr: "Réussite moyenne", ar: "معدل النجاح" },
+  nb_lacunes: { fr: "Lacunes", ar: "نقائص" },
   reussite_question: { fr: "Réussite par question", ar: "النجاح حسب السؤال" },
   lacunes: { fr: "Lacunes principales", ar: "أهم النقائص" },
   qcm_remediation: { fr: "QCM de remédiation", ar: "أسئلة اختيارية للمعالجة" },

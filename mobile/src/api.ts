@@ -87,6 +87,18 @@ export async function analyserDevoir(devoirId: string): Promise<AnalyseResult> {
   return jsonOrThrow(await fetch(`${API_BASE}/devoirs/${devoirId}/analyse`));
 }
 
+export interface DemoSeed {
+  devoir_id: string;
+  matiere: string;
+  nb_copies: number;
+  nb_lacunes: number;
+}
+
+/** Charge un devoir de démo + copies pré-corrigées (dashboard toujours prêt). */
+export async function chargerDemo(): Promise<DemoSeed> {
+  return jsonOrThrow(await fetch(`${API_BASE}/demo/seed`, { method: "POST" }));
+}
+
 export async function construireReference(docs: {
   devoir: ImagePage[];
   bareme: ImagePage[];

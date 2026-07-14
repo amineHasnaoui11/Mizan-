@@ -539,9 +539,81 @@ def _stats_devoir(reference: dict, copies: list[dict]) -> list[dict]:
     return stats
 
 
+def _fallback_analyse(ref: dict, stats: list[dict], nb_copies: int) -> dict:
+    """Analyse déterministe SANS LLM, dérivée des stats.
+
+    Filet de sécurité : garantit que le dashboard s'affiche toujours (démo),
+    même si le modèle est indisponible (Groq/tunnel down, timeout). On prend les
+    questions les plus ratées comme lacunes et on propose une remédiation générique.
+    """
+    pires = sorted(stats, key=lambda s: s.get("taux_echec", 0), reverse=True)
+    lacunes = [
+        {
+            "sujet": (s.get("enonce") or f"Question {s['numero']}")[:80],
+            "questions": [s["numero"]],
+            "taux_echec": s.get("taux_echec", 0),
+            "explication": (
+                f"{s.get('taux_echec', 0)}% des élèves ont échoué sur cette question. "
+                "Elle demande un raisonnement à structurer davantage."
+            ),
+        }
+        for s in pires[:3]
+        if s.get("taux_echec", 0) >= 40
+    ]
+    moy = round(sum(s.get("taux_reussite", 0) for s in stats) / len(stats)) if stats else 0
+    sujet_principal = lacunes[0]["sujet"] if lacunes else "les notions clés"
+    return {
+        "synthese": (
+            f"Sur {nb_copies} copies, la classe réussit en moyenne à {moy}%. "
+            + (
+                f"La difficulté principale porte sur : {sujet_principal}."
+                if lacunes
+                else "Les résultats sont homogènes, pas de lacune majeure détectée."
+            )
+        ),
+        "lacunes": lacunes,
+        "qcm": [
+            {
+                "question": f"Pour progresser sur « {sujet_principal} », quelle démarche adopter ?",
+                "options": [
+                    "Justifier chaque réponse par une preuve du document",
+                    "Recopier l'énoncé",
+                    "Répondre par oui ou non sans expliquer",
+                ],
+                "reponse": "Justifier chaque réponse par une preuve du document",
+                "cible": sujet_principal,
+            }
+        ]
+        if lacunes
+        else [],
+        "astuces": [
+            "Reprendre en classe les questions de raisonnement (justifier, expliquer).",
+            "Faire verbaliser aux élèves l'étape « pourquoi » avant d'écrire la réponse.",
+            "Proposer des exercices courts ciblés sur les questions les plus ratées.",
+        ],
+    }
+
+
+@app.post("/demo/seed")
+def demo_seed() -> dict:
+    """Charge un devoir de démo + copies pré-corrigées (dashboard toujours prêt).
+
+    Idempotent : régénère les mêmes données à chaque appel. Sert à garantir une
+    démo fiable sans dépendre d'une correction live.
+    """
+    from . import demo_seed as _seed
+
+    return _seed.seed()
+
+
 @app.get("/devoirs/{devoir_id}/analyse")
-def analyser_devoir(devoir_id: str) -> dict:
-    """Dashboard prof : lacunes de la classe + QCM et astuces de remédiation."""
+def analyser_devoir(devoir_id: str, refresh: bool = False) -> dict:
+    """Dashboard prof : lacunes de la classe + QCM et astuces de remédiation.
+
+    Résultat mis en cache (clé = nb de copies). `?refresh=1` force le recalcul.
+    Si le modèle échoue, on retombe sur une analyse déterministe (jamais d'erreur
+    en démo).
+    """
     ref = store.charger(devoir_id)
     if ref is None:
         raise HTTPException(404, "Devoir introuvable.")
@@ -550,7 +622,19 @@ def analyser_devoir(devoir_id: str) -> dict:
     if not copies:
         raise HTTPException(400, "Aucune copie corrigée pour ce devoir. Corrige des copies d'abord.")
     stats = _stats_devoir(ref, copies)
-    analyse = _handle_anthropic_errors(lambda: correcteur.analyser_lacunes(ref, stats, len(copies)))
+
+    if not refresh:
+        cache = store.charger_analyse(devoir_id, len(copies))
+        if cache is not None:
+            return {"nb_copies": len(copies), "stats": stats, "analyse": cache}
+
+    try:
+        analyse = correcteur.analyser_lacunes(ref, stats, len(copies))
+    except Exception:
+        # Modèle indisponible / lent : le dashboard reste fonctionnel.
+        analyse = _fallback_analyse(ref, stats, len(copies))
+
+    store.enregistrer_analyse(devoir_id, len(copies), analyse)
     return {"nb_copies": len(copies), "stats": stats, "analyse": analyse}
 
 
