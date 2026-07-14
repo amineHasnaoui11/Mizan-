@@ -121,9 +121,11 @@ def racine() -> dict:
     return {
         "service": "Mizan",
         "version": __version__,
-        "modele": config.MODEL,
+        "provider": config.PROVIDER,
+        "ocr": config.OCR,
+        "modele_texte": config.LLM_TEXT_MODEL if config.PROVIDER in ("esprit", "groq") else config.MODEL,
         "effort": config.EFFORT,
-        "endpoints": ["/construire-reference", "/corriger", "/transcrire", "/noter"],
+        "endpoints": ["/construire-reference", "/corriger", "/transcrire", "/noter", "/assistant"],
     }
 
 
