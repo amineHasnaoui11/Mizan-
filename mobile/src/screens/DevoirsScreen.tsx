@@ -4,12 +4,14 @@ import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors } from "../theme";
 import { Button, Card } from "../components/UI";
+import { useLang } from "../i18n";
 import { listerDevoirs, type DevoirResume } from "../api";
 import type { RootStackParamList } from "./types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Devoirs">;
 
 export function DevoirsScreen({ navigation }: Props) {
+  const { t, rtlText } = useLang();
   const [devoirs, setDevoirs] = useState<DevoirResume[]>([]);
   const [erreur, setErreur] = useState<string | null>(null);
   const [charge, setCharge] = useState(false);
@@ -32,14 +34,14 @@ export function DevoirsScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Button title="➕ Nouveau devoir" onPress={() => navigation.navigate("NouveauDevoir")} />
+        <Button title={t("nouveau_devoir")} onPress={() => navigation.navigate("NouveauDevoir")} />
 
         {erreur && <Text style={styles.erreur}>{erreur}</Text>}
 
         {charge && devoirs.length === 0 && !erreur && (
           <Card style={{ marginTop: 16 }}>
-            <Text style={styles.empty}>Aucun devoir pour l'instant.</Text>
-            <Text style={styles.emptySub}>Crée-en un en photographiant devoir + barème + corrigé.</Text>
+            <Text style={[styles.empty, rtlText]}>{t("aucun_devoir")}</Text>
+            <Text style={[styles.emptySub, rtlText]}>{t("aucun_devoir_sub")}</Text>
           </Card>
         )}
 
@@ -48,14 +50,14 @@ export function DevoirsScreen({ navigation }: Props) {
             <Card key={d.devoir_id}>
               <Text style={styles.dTitre}>{d.matiere || d.devoir_id}</Text>
               <Text style={styles.dSub}>
-                {d.niveau ? `${d.niveau} · ` : ""}{d.nb_questions} questions · {d.note_max_devoir} pts
+                {d.niveau ? `${d.niveau} · ` : ""}{d.nb_questions} {t("questions")} · {d.note_max_devoir} pts
               </Text>
               <View style={styles.actions}>
                 <TouchableOpacity onPress={() => navigation.navigate("Scan", { devoirId: d.devoir_id })}>
-                  <Text style={styles.dAction}>📷 Corriger une copie</Text>
+                  <Text style={styles.dAction}>{t("corriger_copie")}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => navigation.navigate("Analyse", { devoirId: d.devoir_id, matiere: d.matiere || d.devoir_id })}>
-                  <Text style={styles.dAction}>📊 Analyse de la classe</Text>
+                  <Text style={styles.dAction}>{t("analyse_classe")}</Text>
                 </TouchableOpacity>
               </View>
             </Card>

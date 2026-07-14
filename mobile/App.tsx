@@ -2,6 +2,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { StatusBar } from "expo-status-bar";
 import { colors } from "./src/theme";
+import { LangProvider, useLang } from "./src/i18n";
 import { AccueilScreen } from "./src/screens/AccueilScreen";
 import { DevoirsScreen } from "./src/screens/DevoirsScreen";
 import { NouveauDevoirScreen } from "./src/screens/NouveauDevoirScreen";
@@ -13,7 +14,8 @@ import type { RootStackParamList } from "./src/screens/types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-export default function App() {
+function Nav() {
+  const { t } = useLang();
   return (
     <NavigationContainer>
       <StatusBar style="dark" />
@@ -26,13 +28,21 @@ export default function App() {
         }}
       >
         <Stack.Screen name="Accueil" component={AccueilScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Devoirs" component={DevoirsScreen} options={{ title: "Mes devoirs" }} />
-        <Stack.Screen name="NouveauDevoir" component={NouveauDevoirScreen} options={{ title: "Nouveau devoir" }} />
-        <Stack.Screen name="Scan" component={ScanScreen} options={{ title: "Corriger une copie" }} />
-        <Stack.Screen name="Exercice" component={ExerciceScreen} options={{ title: "Corriger un exercice" }} />
-        <Stack.Screen name="Analyse" component={AnalyseScreen} options={{ title: "Analyse de la classe" }} />
-        <Stack.Screen name="Resultat" component={ResultatScreen} options={{ title: "Résultat" }} />
+        <Stack.Screen name="Devoirs" component={DevoirsScreen} options={{ title: t("nav_devoirs") }} />
+        <Stack.Screen name="NouveauDevoir" component={NouveauDevoirScreen} options={{ title: t("nav_nouveau") }} />
+        <Stack.Screen name="Scan" component={ScanScreen} options={{ title: t("nav_scan") }} />
+        <Stack.Screen name="Exercice" component={ExerciceScreen} options={{ title: t("nav_exercice") }} />
+        <Stack.Screen name="Analyse" component={AnalyseScreen} options={{ title: t("nav_analyse") }} />
+        <Stack.Screen name="Resultat" component={ResultatScreen} options={{ title: t("nav_resultat") }} />
       </Stack.Navigator>
     </NavigationContainer>
+  );
+}
+
+export default function App() {
+  return (
+    <LangProvider>
+      <Nav />
+    </LangProvider>
   );
 }

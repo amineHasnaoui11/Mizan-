@@ -3,12 +3,14 @@ import { View, Text, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator } f
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, couleurNote } from "../theme";
 import { Card, Badge } from "../components/UI";
+import { useLang } from "../i18n";
 import { analyserDevoir, type AnalyseResult } from "../api";
 import type { RootStackParamList } from "./types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Analyse">;
 
 export function AnalyseScreen({ route }: Props) {
+  const { t, rtlText } = useLang();
   const [data, setData] = useState<AnalyseResult | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
 
@@ -32,7 +34,7 @@ export function AnalyseScreen({ route }: Props) {
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
           <ActivityIndicator color={colors.accent} />
-          <Text style={styles.muted}>Analyse de la classe en cours…</Text>
+          <Text style={styles.muted}>{t("analyse_en_cours")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -42,16 +44,16 @@ export function AnalyseScreen({ route }: Props) {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.h1}>{route.params.matiere}</Text>
-        <Text style={styles.muted}>Analyse sur {data.nb_copies} copie(s)</Text>
+        <Text style={[styles.h1, rtlText]}>{route.params.matiere}</Text>
+        <Text style={[styles.muted, rtlText]}>{t("analyse_sur")} {data.nb_copies} {t("copies")}</Text>
 
         {!!a.synthese && (
           <Card style={styles.card}>
-            <Text style={styles.body}>{a.synthese}</Text>
+            <Text style={[styles.body, rtlText]}>{a.synthese}</Text>
           </Card>
         )}
 
-        <Text style={styles.h2}>Réussite par question</Text>
+        <Text style={[styles.h2, rtlText]}>{t("reussite_question")}</Text>
         <Card style={styles.card}>
           {data.stats.map((s) => (
             <View key={s.numero} style={styles.barRow}>
@@ -66,14 +68,14 @@ export function AnalyseScreen({ route }: Props) {
 
         {a.lacunes?.length > 0 && (
           <>
-            <Text style={styles.h2}>Lacunes principales</Text>
+            <Text style={[styles.h2, rtlText]}>{t("lacunes")}</Text>
             {a.lacunes.map((l, i) => (
               <Card key={i} style={styles.card}>
                 <View style={styles.lacHead}>
-                  <Text style={styles.lacSujet}>{l.sujet}</Text>
-                  <Badge text={`${l.taux_echec}% d'échec`} color={colors.scoreZero} />
+                  <Text style={[styles.lacSujet, rtlText]}>{l.sujet}</Text>
+                  <Badge text={`${l.taux_echec}% ${t("echec")}`} color={colors.scoreZero} />
                 </View>
-                <Text style={styles.muted}>{l.explication}</Text>
+                <Text style={[styles.muted, rtlText]}>{l.explication}</Text>
                 {l.questions?.length > 0 && <Text style={styles.qref}>Questions : {l.questions.map((q) => `Q${q}`).join(", ")}</Text>}
               </Card>
             ))}
@@ -82,12 +84,12 @@ export function AnalyseScreen({ route }: Props) {
 
         {a.qcm?.length > 0 && (
           <>
-            <Text style={styles.h2}>QCM de remédiation</Text>
+            <Text style={[styles.h2, rtlText]}>{t("qcm_remediation")}</Text>
             {a.qcm.map((q, i) => (
               <Card key={i} style={styles.card}>
-                <Text style={styles.body}>{q.question}</Text>
+                <Text style={[styles.body, rtlText]}>{q.question}</Text>
                 {q.options.map((o, j) => (
-                  <Text key={j} style={[styles.opt, o === q.reponse && styles.optOk]}>
+                  <Text key={j} style={[styles.opt, o === q.reponse && styles.optOk, rtlText]}>
                     {o === q.reponse ? "✓ " : "• "}{o}
                   </Text>
                 ))}
@@ -98,10 +100,10 @@ export function AnalyseScreen({ route }: Props) {
 
         {a.astuces?.length > 0 && (
           <>
-            <Text style={styles.h2}>Astuces de remédiation</Text>
+            <Text style={[styles.h2, rtlText]}>{t("astuces")}</Text>
             <Card style={styles.card}>
-              {a.astuces.map((t, i) => (
-                <Text key={i} style={styles.astuce}>💡 {t}</Text>
+              {a.astuces.map((astuce, i) => (
+                <Text key={i} style={[styles.astuce, rtlText]}>💡 {astuce}</Text>
               ))}
             </Card>
           </>

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, SafeAreaView, ScrollView, TextInput } from "rea
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, radius } from "../theme";
 import { Button, Card } from "../components/UI";
+import { useLang } from "../i18n";
 import { PagesPicker } from "../components/PagesPicker";
 import {
   construireReference,
@@ -16,6 +17,7 @@ import type { RootStackParamList } from "./types";
 type Props = NativeStackScreenProps<RootStackParamList, "NouveauDevoir">;
 
 export function NouveauDevoirScreen({ navigation }: Props) {
+  const { t, rtlText } = useLang();
   const [matiere, setMatiere] = useState("");
   const [niveau, setNiveau] = useState("");
   const [devoir, setDevoir] = useState<ImagePage[]>([]);
@@ -30,7 +32,7 @@ export function NouveauDevoirScreen({ navigation }: Props) {
 
   async function construire() {
     setErreur(null);
-    setStatut("Construction du barème…");
+    setStatut(t("construction"));
     try {
       setRef(await construireReference({ devoir, bareme, corrige, matiere, niveau }));
     } catch (e) {
@@ -47,7 +49,7 @@ export function NouveauDevoirScreen({ navigation }: Props) {
 
   async function enregistrer() {
     if (!ref) return;
-    setStatut("Enregistrement…");
+    setStatut(t("enregistrement"));
     try {
       await enregistrerDevoir({ ...ref, note_max_devoir: Math.round(total * 100) / 100 });
       navigation.goBack();
@@ -62,27 +64,24 @@ export function NouveauDevoirScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.content}>
         {!ref ? (
           <>
-            <Text style={styles.intro}>
-              Prends en photo les documents du devoir. L'IA en construit le barème ; tu pourras le
-              relire avant d'enregistrer.
-            </Text>
+            <Text style={[styles.intro, rtlText]}>{t("construire_intro")}</Text>
             <Card>
-              <TextInput value={matiere} onChangeText={setMatiere} placeholder="Matière (ex : Maths)" placeholderTextColor={colors.muted} style={styles.input} />
-              <TextInput value={niveau} onChangeText={setNiveau} placeholder="Niveau (ex : Bac)" placeholderTextColor={colors.muted} style={[styles.input, { marginTop: 10 }]} />
+              <TextInput value={matiere} onChangeText={setMatiere} placeholder={t("matiere")} placeholderTextColor={colors.muted} style={[styles.input, rtlText]} />
+              <TextInput value={niveau} onChangeText={setNiveau} placeholder={t("niveau")} placeholderTextColor={colors.muted} style={[styles.input, { marginTop: 10 }, rtlText]} />
             </Card>
             <Card style={{ marginTop: 12 }}>
-              <PagesPicker label="📄 Devoir vierge" hint="les énoncés des questions" pages={devoir} onChange={setDevoir} />
+              <PagesPicker label={t("doc_devoir")} hint={t("doc_devoir_hint")} pages={devoir} onChange={setDevoir} />
             </Card>
             <Card style={{ marginTop: 12 }}>
-              <PagesPicker label="📊 Barème" hint="les points par question" pages={bareme} onChange={setBareme} />
+              <PagesPicker label={t("doc_bareme")} hint={t("doc_bareme_hint")} pages={bareme} onChange={setBareme} />
             </Card>
             <Card style={{ marginTop: 12 }}>
-              <PagesPicker label="✍️ Ta correction" hint="les réponses attendues" pages={corrige} onChange={setCorrige} />
+              <PagesPicker label={t("doc_corrige")} hint={t("doc_corrige_hint")} pages={corrige} onChange={setCorrige} />
             </Card>
 
             {erreur && <Text style={styles.erreur}>{erreur}</Text>}
             <View style={{ marginTop: 16 }}>
-              <Button title="Construire le barème" onPress={construire} disabled={!peut || statut !== null} loading={statut !== null} />
+              <Button title={t("construire_bareme")} onPress={construire} disabled={!peut || statut !== null} loading={statut !== null} />
             </View>
           </>
         ) : (
@@ -93,7 +92,7 @@ export function NouveauDevoirScreen({ navigation }: Props) {
                 <Text style={styles.sub}>{ref.questions.length} questions · {Math.round(total * 100) / 100} pts</Text>
               </View>
             </View>
-            <Text style={styles.intro}>Relis et corrige si besoin (énoncé, points, corrigé), puis enregistre.</Text>
+            <Text style={[styles.intro, rtlText]}>{t("relis_bareme")}</Text>
             {ref.questions.map((q) => (
               <Card key={q.numero} style={{ marginTop: 10 }}>
                 <View style={styles.qHead}>
@@ -114,7 +113,7 @@ export function NouveauDevoirScreen({ navigation }: Props) {
             ))}
             {erreur && <Text style={styles.erreur}>{erreur}</Text>}
             <View style={{ marginTop: 16 }}>
-              <Button title="✓ Enregistrer le devoir" onPress={enregistrer} loading={statut !== null} />
+              <Button title={t("enregistrer_devoir")} onPress={enregistrer} loading={statut !== null} />
             </View>
           </>
         )}

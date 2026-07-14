@@ -5,11 +5,13 @@ import { colors, radius, couleurNote } from "../theme";
 import { Button, Card, Badge } from "../components/UI";
 import { enregistrerCopie, type Correction } from "../api";
 import { API_BASE } from "../config";
+import { useLang } from "../i18n";
 import type { RootStackParamList } from "./types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Resultat">;
 
 export function ResultatScreen({ route, navigation }: Props) {
+  const { t, rtlText } = useLang();
   const [correction, setCorrection] = useState<Correction>(route.params.correction);
   const [statut, setStatut] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -56,7 +58,7 @@ export function ResultatScreen({ route, navigation }: Props) {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
         <Card>
-          <Text style={styles.muted}>{route.params.eleve} · note proposée (ajustable)</Text>
+          <Text style={[styles.muted, rtlText]}>{route.params.eleve} · {t("note_ajustable")}</Text>
           <Text style={[styles.note, { color: couleurNote(total, totalMax) }]}>
             {Math.round(total * 100) / 100} <Text style={styles.noteMax}>/ {Math.round(totalMax * 100) / 100}</Text>
           </Text>
@@ -75,8 +77,8 @@ export function ResultatScreen({ route, navigation }: Props) {
           <Card key={q.numero} style={[styles.qCard, q.a_verifier && styles.qCardWarn]}>
             <View style={styles.qHead}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
-                <Text style={styles.qTitle}>Question {q.numero}</Text>
-                {q.a_verifier && <Badge text="à vérifier" color={colors.scorePartial} />}
+                <Text style={styles.qTitle}>Q{q.numero}</Text>
+                {q.a_verifier && <Badge text={t("a_verifier")} color={colors.scorePartial} />}
               </View>
               <View style={styles.noteEdit}>
                 <TextInput
@@ -89,8 +91,8 @@ export function ResultatScreen({ route, navigation }: Props) {
               </View>
             </View>
             {!!q.transcription && (
-              <Text style={styles.trans}>
-                <Text style={styles.muted}>Lu : </Text>
+              <Text style={[styles.trans, rtlText]}>
+                <Text style={styles.muted}>{t("lu")}</Text>
                 {q.transcription}
               </Text>
             )}
@@ -103,20 +105,16 @@ export function ResultatScreen({ route, navigation }: Props) {
 
         {enregistre ? (
           <Card style={{ marginTop: 20 }}>
-            <Text style={styles.okTitre}>✓ Note enregistrée</Text>
-            <Text style={styles.muted}>
-              Dans l'espace de la classe {route.params.classe || "—"}. {route.params.eleve} la verra en
-              se connectant à Mizan.
-            </Text>
+            <Text style={[styles.okTitre, rtlText]}>{t("note_enregistree")}</Text>
             <View style={{ marginTop: 12, gap: 10 }}>
-              <Button title="🔗 Partager l'accès de la classe" variant="outline" onPress={partagerClasse} />
-              <Button title="Corriger une autre copie" onPress={() => navigation.navigate("Scan", {})} />
+              <Button title={t("partager_classe")} variant="outline" onPress={partagerClasse} />
+              <Button title={t("autre_copie")} onPress={() => navigation.navigate("Scan", {})} />
             </View>
           </Card>
         ) : (
           <View style={{ marginTop: 20, gap: 10 }}>
-            <Button title="✓ Valider la note" onPress={valider} loading={statut} />
-            <Button title="Corriger une autre copie" variant="outline" onPress={() => navigation.navigate("Scan", {})} />
+            <Button title={t("valider_note")} onPress={valider} loading={statut} />
+            <Button title={t("autre_copie")} variant="outline" onPress={() => navigation.navigate("Scan", {})} />
           </View>
         )}
       </ScrollView>

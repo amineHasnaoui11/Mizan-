@@ -13,6 +13,7 @@ import * as ImagePicker from "expo-image-picker";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, radius } from "../theme";
 import { Button, Card } from "../components/UI";
+import { useLang } from "../i18n";
 import {
   listerDevoirs,
   obtenirDevoir,
@@ -26,6 +27,7 @@ import type { RootStackParamList } from "./types";
 type Props = NativeStackScreenProps<RootStackParamList, "Scan">;
 
 export function ScanScreen({ navigation, route }: Props) {
+  const { t, rtlText } = useLang();
   const [devoirs, setDevoirs] = useState<DevoirResume[]>([]);
   const [devoirId, setDevoirId] = useState<string>(route.params?.devoirId ?? "");
   const [eleve, setEleve] = useState("");
@@ -64,11 +66,11 @@ export function ScanScreen({ navigation, route }: Props) {
     if (!devoirId || pages.length === 0) return;
     const copieId = eleve.trim() ? eleve.trim().replace(/\s+/g, "_").toLowerCase() : "eleve";
     try {
-      setStatut("Lecture de la copie…");
+      setStatut(t("lecture"));
       const ref = await obtenirDevoir(devoirId);
-      const t = await transcrire(ref, copieId, pages);
-      setStatut("Notation en cours…");
-      const correction = await noter(ref, copieId, t.transcriptions);
+      const trans = await transcrire(ref, copieId, pages);
+      setStatut(t("notation"));
+      const correction = await noter(ref, copieId, trans.transcriptions);
       setStatut(null);
       navigation.navigate("Resultat", {
         correction,
@@ -86,10 +88,10 @@ export function ScanScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
         <Card>
-          <Text style={styles.label}>Devoir</Text>
+          <Text style={[styles.label, rtlText]}>{t("devoir")}</Text>
           <View style={styles.chips}>
             {devoirs.length === 0 && (
-              <Text style={styles.muted}>Aucun devoir. Crée-en un dans l'app web d'abord.</Text>
+              <Text style={[styles.muted, rtlText]}>{t("aucun_devoir")}</Text>
             )}
             {devoirs.map((d) => (
               <TouchableOpacity
@@ -104,15 +106,15 @@ export function ScanScreen({ navigation, route }: Props) {
             ))}
           </View>
 
-          <Text style={[styles.label, { marginTop: 16 }]}>Élève</Text>
+          <Text style={[styles.label, { marginTop: 16 }, rtlText]}>{t("eleve")}</Text>
           <TextInput
             value={eleve}
             onChangeText={setEleve}
             placeholder="Ex : Aziz Abdelli"
             placeholderTextColor={colors.muted}
-            style={styles.input}
+            style={[styles.input, rtlText]}
           />
-          <Text style={[styles.label, { marginTop: 12 }]}>Classe</Text>
+          <Text style={[styles.label, { marginTop: 12 }, rtlText]}>{t("classe")}</Text>
           <TextInput
             value={classe}
             onChangeText={setClasse}
@@ -123,7 +125,7 @@ export function ScanScreen({ navigation, route }: Props) {
         </Card>
 
         <Card style={{ marginTop: 16 }}>
-          <Text style={styles.label}>Pages de la copie ({pages.length})</Text>
+          <Text style={[styles.label, rtlText]}>{t("copie_eleve")} ({pages.length})</Text>
           <View style={styles.thumbs}>
             {pages.map((p, i) => (
               <View key={i} style={styles.thumbWrap}>
@@ -138,7 +140,7 @@ export function ScanScreen({ navigation, route }: Props) {
             ))}
           </View>
           <View style={{ marginTop: 12 }}>
-            <Button title="📷 Ajouter une page" variant="outline" onPress={ajouterPage} />
+            <Button title={t("ajouter_page")} variant="outline" onPress={ajouterPage} />
           </View>
         </Card>
 
@@ -147,7 +149,7 @@ export function ScanScreen({ navigation, route }: Props) {
 
         <View style={{ marginTop: 20 }}>
           <Button
-            title="Corriger la copie"
+            title={t("lire_copie")}
             onPress={corriger}
             disabled={!devoirId || pages.length === 0 || statut !== null}
             loading={statut !== null}

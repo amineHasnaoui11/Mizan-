@@ -13,6 +13,7 @@ import * as ImagePicker from "expo-image-picker";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, radius } from "../theme";
 import { Button, Card } from "../components/UI";
+import { useLang } from "../i18n";
 import { assistant, type ImagePage } from "../api";
 import type { RootStackParamList } from "./types";
 
@@ -20,6 +21,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "Exercice">;
 
 /** Mode assistant libre : scanner un exercice → corrigé direct (sans devoir). */
 export function ExerciceScreen(_props: Props) {
+  const { t, rtlText } = useLang();
   const [pages, setPages] = useState<ImagePage[]>([]);
   const [consigne, setConsigne] = useState("");
   const [texte, setTexte] = useState<string | null>(null);
@@ -52,12 +54,10 @@ export function ExerciceScreen(_props: Props) {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.intro}>
-          Scanne un exercice, l'IA te donne le corrigé — pas besoin de barème.
-        </Text>
+        <Text style={[styles.intro, rtlText]}>{t("ex_intro")}</Text>
 
         <Card>
-          <Text style={styles.label}>Consigne (facultatif)</Text>
+          <Text style={[styles.label, rtlText]}>{t("consigne")}</Text>
           <TextInput
             value={consigne}
             onChangeText={setConsigne}
@@ -66,7 +66,7 @@ export function ExerciceScreen(_props: Props) {
             style={styles.input}
             multiline
           />
-          <Text style={[styles.label, { marginTop: 14 }]}>Feuille ({pages.length})</Text>
+          <Text style={[styles.label, { marginTop: 14 }, rtlText]}>{t("copie_eleve")} ({pages.length})</Text>
           <View style={styles.thumbs}>
             {pages.map((p, i) => (
               <View key={i} style={styles.thumbWrap}>
@@ -78,7 +78,7 @@ export function ExerciceScreen(_props: Props) {
             ))}
           </View>
           <View style={{ marginTop: 12 }}>
-            <Button title="📷 Ajouter une page" variant="outline" onPress={ajouterPage} />
+            <Button title={t("ajouter_page")} variant="outline" onPress={ajouterPage} />
           </View>
         </Card>
 
@@ -86,7 +86,7 @@ export function ExerciceScreen(_props: Props) {
 
         <View style={{ marginTop: 16 }}>
           <Button
-            title="Obtenir le corrigé"
+            title={t("obtenir_corrige")}
             onPress={corriger}
             disabled={pages.length === 0 || statut}
             loading={statut}
@@ -95,8 +95,8 @@ export function ExerciceScreen(_props: Props) {
 
         {texte && (
           <Card style={{ marginTop: 16 }}>
-            <Text style={styles.corrigeTitre}>Corrigé</Text>
-            <Text style={styles.corrige}>{texte}</Text>
+            <Text style={[styles.corrigeTitre, rtlText]}>{t("corrige")}</Text>
+            <Text style={[styles.corrige, rtlText]}>{texte}</Text>
           </Card>
         )}
       </ScrollView>
